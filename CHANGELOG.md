@@ -39,6 +39,9 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   third-party libraries in `[tool.mypy.overrides]`.
 
 ### Fixed
+- The `woxpas-cli` no longer dumps a raw `asyncpg` traceback when it can't
+  authenticate to or reach Postgres; it prints a clean, actionable message
+  (wrong credentials vs. stack not running) and exits non-zero.
 - Docker-only install (caught by a clean-clone test): `woxpas-cli init-env` now
   fills every key from `.env.example` even when `.env` already exists as an empty
   file (install.sh `touch`es it for the bind-mount), so the generated `.env` is

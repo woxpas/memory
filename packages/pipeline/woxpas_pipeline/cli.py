@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
+import asyncpg
 import structlog
 from woxpas_storage import (
     PostgresPool,
@@ -3145,6 +3146,17 @@ def main() -> None:
     args = parser.parse_args()
     try:
         sys.exit(asyncio.run(args.func(args)))
+    except (asyncpg.InvalidPasswordError, asyncpg.InvalidAuthorizationSpecificationError):
+        print("\n[woxpas] the database rejected the credentials in .env.", file=sys.stderr)
+        print("  POSTGRES_USER / POSTGRES_PASSWORD don't match the running Postgres —", file=sys.stderr)
+        print("  usually because the data volume predates the current .env (e.g. secrets", file=sys.stderr)
+        print("  were regenerated). Reset the local stack (this DESTROYS local data):", file=sys.stderr)
+        print("    docker compose --profile app down -v && docker compose --profile app up -d", file=sys.stderr)
+        sys.exit(2)
+    except (ConnectionError, asyncpg.CannotConnectNowError) as e:
+        print(f"\n[woxpas] can't reach the database: {type(e).__name__}", file=sys.stderr)
+        print("  Is the stack running?  woxpas-cli up   (or: docker compose up -d)", file=sys.stderr)
+        sys.exit(2)
     except KeyboardInterrupt:
         # Ctrl-C: print a clean message + exit with 130 (the standard
         # SIGINT exit code). asyncio.run handles task cancellation
