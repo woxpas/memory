@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
+from typing import Any
 
 from woxpas_core import (
     Block,
@@ -94,16 +95,16 @@ class TextExtractor(Extractor):
                 if m:
                     flush_paragraph(line_start)
                     level = len(m.group(1))
-                    title = m.group(2)
+                    heading = m.group(2)
                     # Maintain a section path for downstream blocks.
                     while len(section_path) >= level:
                         section_path.pop()
-                    section_path.append(title)
+                    section_path.append(heading)
                     blocks.append(Block.make(
                         doc_id=inp.doc_id,
                         ordinal=len(blocks),
                         type_=BlockType.HEADING,
-                        text=title,
+                        text=heading,
                         level=level,
                         source_locator=TextLocator(
                             section_path=list(section_path),
@@ -183,8 +184,8 @@ class TextExtractor(Extractor):
             return content.decode("latin-1", errors="replace")
 
     @staticmethod
-    def _headings_tree(blocks: list[Block]) -> list[dict]:
-        out: list[dict] = []
+    def _headings_tree(blocks: list[Block]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
         for b in blocks:
             if b.type is BlockType.HEADING:
                 out.append({

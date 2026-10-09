@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -90,7 +91,7 @@ class SupersessionStage:
         # Filter by similarity threshold + age. Only consider matches that are
         # recent (could plausibly be a revision) and similar.
         cutoff = datetime.now(UTC) - timedelta(seconds=window_s)
-        chosen: dict | None = None
+        chosen: dict[str, Any] | None = None
         async with self._ctx.pool.tenant_session(tenant_id) as conn:
             for cand in candidates:
                 if cand["score"] < threshold:
@@ -169,8 +170,9 @@ class SupersessionStage:
                          evaluated=len(candidates))
 
     async def _record_failure(
-        self, tenant_id, doc_id, run_id, error_class, message, retriable, causation_id,
-    ):
+        self, tenant_id: UUID, doc_id: UUID, run_id: UUID, error_class: str,
+        message: str, retriable: bool, causation_id: UUID | None,
+    ) -> None:
         async with self._ctx.pool.tenant_session(tenant_id) as conn:
             run_repo = PipelineRunRepo(conn)
             outbox   = OutboxRepo(conn)

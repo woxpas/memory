@@ -250,7 +250,7 @@ async def cmd_bootstrap(args: argparse.Namespace) -> int:
     compose_ok = False
     try:
         result = _sp.run(
-            [docker_path, "compose", "version"], capture_output=True, timeout=10,
+            [docker_path or "docker", "compose", "version"], capture_output=True, timeout=10,
         )
         compose_ok = result.returncode == 0
     except Exception:
@@ -403,7 +403,7 @@ async def cmd_bootstrap(args: argparse.Namespace) -> int:
         compose_args.extend(["-f", cf])
 
     _sp.run(
-        [docker_path, "compose", *compose_args, "up", "-d", "postgres", "qdrant", "minio", "clamav"],
+        [docker_path or "docker", "compose", *compose_args, "up", "-d", "postgres", "qdrant", "minio", "clamav"],
         check=True,
     )
 
@@ -414,7 +414,7 @@ async def cmd_bootstrap(args: argparse.Namespace) -> int:
         healthy = False
         for _ in range(120):
             result = _sp.run(
-                [docker_path, "compose", *compose_args, "ps", "--format", "json", svc],
+                [docker_path or "docker", "compose", *compose_args, "ps", "--format", "json", svc],
                 capture_output=True,
             )
             try:
@@ -655,9 +655,9 @@ async def cmd_bootstrap(args: argparse.Namespace) -> int:
     pg_password = existing_env.get("POSTGRES_PASSWORD", "")
     qdrant_key  = existing_env.get("QDRANT_API_KEY", "")
     minio_pw    = existing_env.get("MINIO_ROOT_PASSWORD", "")
-    cwd = str(Path.cwd())
+    cwd_str = str(Path.cwd())
     mcp_json = _mcp_config_json(
-        cwd=cwd,
+        cwd=cwd_str,
         tenant_id=str(tenant_id),
         pg_password=pg_password,
         qdrant_key=qdrant_key,
@@ -716,7 +716,7 @@ def _mcp_config_json(
     return _json.dumps(config, indent=2)
 
 
-async def _download_artefacts(artefacts: list) -> None:
+async def _download_artefacts(artefacts: list[Any]) -> None:
     """Download a list of model artefacts with progress reporting."""
     from woxpas_runtime import fetch
     for art in artefacts:
@@ -1317,8 +1317,8 @@ async def cmd_prefetch_models(args: argparse.Namespace) -> int:
     for art in artefacts:
         print(f"  → {art.model_version}  (repo: {art.repo})")
         path = fetch(art)
-        size = _path_size(path)
-        print(f"    cached at {path}  ({size})")
+        size_str = _path_size(path)
+        print(f"    cached at {path}  ({size_str})")
     print("\n[woxpas-cli] all models cached. Workers will load from disk on first call.")
     return 0
 
@@ -1816,8 +1816,8 @@ async def cmd_recall(args: argparse.Namespace) -> int:
                 print(f"\n             Summary:\n               {d.summary}")
             if d.chunks_preview:
                 print(f"\n             Chunks ({len(d.chunks_preview)}):")
-                for c in d.chunks_preview[:3]:
-                    print(f"               • {(c.snippet or '')[:75]}")
+                for ch in d.chunks_preview[:3]:
+                    print(f"               • {(ch.snippet or '')[:75]}")
 
         if result.graph:
             g = result.graph
@@ -1968,7 +1968,7 @@ async def cmd_ask(args: argparse.Namespace) -> int:
         # weights.
         _backend_cache = {intent_llm.name: intent_llm} if intent_llm else {}
 
-        def llm_factory(name):
+        def llm_factory(name: str | None) -> Any:
             if name is None and intent_llm is not None:
                 return intent_llm
             resolved = name or "qwen2.5-3b-instruct-q4km"
@@ -2084,7 +2084,7 @@ async def cmd_ask(args: argparse.Namespace) -> int:
             from datetime import datetime as _dt
             from uuid import UUID as _UUID_LOCAL
 
-            def _safe(v):
+            def _safe(v: Any) -> Any:
                 """Recursive coercion: dataclasses → dict, UUIDs/datetimes
                 → str, sets → list. Falls through to str() for unknown
                 types so json.dumps never raises."""
@@ -2405,7 +2405,7 @@ async def cmd_import_tenant(args: argparse.Namespace) -> int:
         if header.get("format") != "woxpas-tenant-export":
             raise SystemExit(f"unrecognized export format: {header.get('format')}")
 
-        table_rows: dict[str, list[dict]] = {}
+        table_rows: dict[str, list[dict[str, Any]]] = {}
         for line in f:
             line = line.strip()
             if not line:

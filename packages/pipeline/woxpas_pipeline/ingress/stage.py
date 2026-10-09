@@ -15,6 +15,7 @@ via the OutboxPublisher.
 
 from __future__ import annotations
 
+from typing import Any, cast
 from uuid import UUID
 
 import structlog
@@ -197,7 +198,7 @@ class IngressStage:
         return doc_id, True
 
     async def _auto_thread(
-        self, conn, tenant_id: UUID, source_channel: str, captured_by: str,
+        self, conn: Any, tenant_id: UUID, source_channel: str, captured_by: str,
     ) -> UUID | None:
         """Find a recent doc from the same channel + author within the thread window.
         If it has a thread_id, inherit it. If it has none, mint a new thread_id and
@@ -224,7 +225,7 @@ class IngressStage:
         if row is None:
             return None
         if row["thread_id"] is not None:
-            return row["thread_id"]
+            return cast(UUID, row["thread_id"])
         # Peer has no thread yet — seed a new one and backfill it on the peer.
         new_thread = uuid4()
         await conn.execute(

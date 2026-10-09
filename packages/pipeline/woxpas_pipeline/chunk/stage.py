@@ -12,7 +12,7 @@ to status='indexed'.
 from __future__ import annotations
 
 import asyncio
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import structlog
 from woxpas_core import Event, EventType
@@ -35,10 +35,10 @@ log = structlog.get_logger(__name__)
 
 async def _publish_doc_chunked(  # local helper since it's the only consumer for now
     outbox: OutboxRepo, *,
-    tenant_id, doc_id, pipeline_version,
+    tenant_id: UUID, doc_id: UUID, pipeline_version: str,
     chunk_count: int, span_count: int,
-    correlation_id=None, causation_id=None,
-):
+    correlation_id: UUID | None = None, causation_id: UUID | None = None,
+) -> int:
     return await outbox.publish(Event(
         event_type=EventType.DOC_CHUNKED,
         pipeline_version=pipeline_version,
@@ -187,8 +187,9 @@ class ChunkStage:
                  blocks=len(blocks))
 
     async def _record_failure(
-        self, tenant_id, doc_id, run_id, error_class, message, retriable, causation_id,
-    ):
+        self, tenant_id: UUID, doc_id: UUID, run_id: UUID, error_class: str,
+        message: str, retriable: bool, causation_id: UUID | None,
+    ) -> None:
         async with self._ctx.pool.tenant_session(tenant_id) as conn:
             run_repo = PipelineRunRepo(conn)
             outbox   = OutboxRepo(conn)

@@ -304,7 +304,7 @@ class PipelineContext:
         if explicit > 0:
             return explicit
         defaults = probe().concurrency_defaults
-        return getattr(defaults, stage)
+        return int(getattr(defaults, stage))
 
     # ─── observability ────────────────────────────────────────────────────
 

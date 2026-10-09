@@ -25,6 +25,9 @@ class EmbedderBackend(Protocol):
     we produce so re-runs can target the right model_version selectively.
     """
 
+    model_id: str
+    """Stable logical model name (e.g. 'bge-m3-onnx'), without the version."""
+
     @property
     def model_version(self) -> str: ...
 

@@ -4,6 +4,7 @@ emits doc.scanned (or doc.failed if infected/error)."""
 from __future__ import annotations
 
 import asyncio
+from uuid import UUID
 
 import structlog
 from woxpas_core import AVResult, DocStatus, Event, EventType
@@ -149,8 +150,9 @@ class AvStage:
         log.info("av.clean", doc_id=str(doc_id))
 
     async def _record_failure(
-        self, tenant_id, doc_id, run_id, error_class, message, retriable, causation_id,
-    ):
+        self, tenant_id: UUID, doc_id: UUID, run_id: UUID, error_class: str,
+        message: str, retriable: bool, causation_id: UUID | None,
+    ) -> None:
         async with self._ctx.pool.tenant_session(tenant_id) as conn:
             run_repo = PipelineRunRepo(conn)
             outbox   = OutboxRepo(conn)

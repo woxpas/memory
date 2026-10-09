@@ -28,11 +28,8 @@ jobs:
         run: uvx ruff@0.15.12 check .
 
   typecheck:
-    name: Type check (mypy --strict, advisory)
+    name: Type check (mypy --strict)
     runs-on: ubuntu-latest
-    # Full strict coverage is in progress (known type debt); keep this green-
-    # for-information rather than blocking until the debt is paid down.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Install uv

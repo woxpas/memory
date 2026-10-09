@@ -147,7 +147,7 @@ closed-source-safe and vendor-neutral.
 
 | Layer | Choice |
 |---|---|
-| Language / tooling | Python 3.12+, [`uv`](https://github.com/astral-sh/uv) workspace, `ruff` (lint, CI-enforced), `mypy` (strict target — type coverage in progress) |
+| Language / tooling | Python 3.12+, [`uv`](https://github.com/astral-sh/uv) workspace, `ruff` + `mypy --strict` (both CI-enforced, green) |
 | API | FastAPI + Uvicorn, SSE streaming |
 | Datastore | PostgreSQL 17 + pgvector, `pg_trgm`, `btree_gist`; row-level security |
 | Vector DB | Qdrant 1.13 (dense vectors, INT8 quantized, HNSW) |
@@ -388,8 +388,7 @@ full guide. In short, before opening a PR:
 - `uv sync --all-packages`
 - `uv run ruff check .` — lint, required to be green (CI enforces it). Formatting
   is manual; `ruff format` is intentionally not enforced.
-- `uv run mypy packages` — strict is the target, but there is known type debt,
-  so it runs advisory (don't *add* new errors).
+- `uv run mypy packages` — the workspace is `mypy --strict` and green; keep it that way.
 - `uv run pytest packages` — the infra-free unit tests.
 - Run the relevant smoke battery under `tests/smoke/` if behaviour changed (they
   share local models — **run them sequentially, not in parallel**).

@@ -299,7 +299,7 @@ def parse_extraction(raw: str) -> ExtractionResult:
     )
 
 
-def _parse_entities(items: list) -> list[ExtractedEntity]:
+def _parse_entities(items: list[dict[str, Any]]) -> list[ExtractedEntity]:
     out: list[ExtractedEntity] = []
     for it in items[:64]:    # generous upper bound; LLMs rarely produce more
         if not isinstance(it, dict):
@@ -317,7 +317,7 @@ def _parse_entities(items: list) -> list[ExtractedEntity]:
     return out
 
 
-def _parse_ideas(items: list) -> list[ExtractedIdea]:
+def _parse_ideas(items: list[dict[str, Any]]) -> list[ExtractedIdea]:
     out: list[ExtractedIdea] = []
     for it in items[:32]:
         if not isinstance(it, dict):
@@ -337,7 +337,7 @@ def _parse_ideas(items: list) -> list[ExtractedIdea]:
     return out
 
 
-def _parse_tasks(items: list) -> list[ExtractedTask]:
+def _parse_tasks(items: list[dict[str, Any]]) -> list[ExtractedTask]:
     out: list[ExtractedTask] = []
     for it in items[:32]:
         if not isinstance(it, dict):
@@ -361,7 +361,7 @@ def _parse_tasks(items: list) -> list[ExtractedTask]:
     return out
 
 
-def _parse_claims(items: list) -> list[ExtractedClaim]:
+def _parse_claims(items: list[dict[str, Any]]) -> list[ExtractedClaim]:
     out: list[ExtractedClaim] = []
     for it in items[:64]:
         if not isinstance(it, dict):

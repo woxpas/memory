@@ -34,7 +34,7 @@ uv sync --all-packages        # install the workspace + dev tools
 
 ```bash
 uv run ruff check .           # lint — required to be green (CI enforces this)
-uv run mypy packages          # type check — see "Type checking" below
+uv run mypy packages          # type check — mypy --strict, green and CI-enforced
 ```
 
 Formatting is **manual** — the codebase uses hand-aligned columns in places,
@@ -44,11 +44,10 @@ but don't run `ruff format` across existing files.
 
 ### Type checking
 
-The workspace targets `mypy --strict` (`[tool.mypy] strict = true`). Full
-strict coverage is **in progress** — there is known type debt, so `mypy
-packages` is currently an advisory signal, not a hard gate, and CI runs it
-non-blocking. Please don't *add* new type errors, and fixing existing ones in
-files you touch is very welcome. The goal is a fully green `mypy --strict`.
+The workspace is `mypy --strict` (`[tool.mypy] strict = true`) and **green** —
+CI enforces it. Keep it that way: new code must type-check under strict. The
+pydantic mypy plugin is enabled, and a small set of stub-less third-party
+libraries are scoped in `[tool.mypy.overrides]` (see `pyproject.toml`).
 
 ### Smoke tests
 

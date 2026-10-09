@@ -16,6 +16,7 @@ bottleneck on CPU, parallel runs would just thrash). Tune via settings.
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -52,7 +53,7 @@ _BODY_BLOCK_TYPES_PRIORITY = (
 )
 
 
-def _assemble_body(blocks: list[dict], cap_chars: int = 24000) -> str:
+def _assemble_body(blocks: list[dict[str, Any]], cap_chars: int = 24000) -> str:
     """Concatenate block.text in document order, capped to summarizer context budget."""
     parts: list[str] = []
     total = 0
@@ -294,7 +295,7 @@ class SummarizeStage:
     async def _auto_assign_scope(
         self, tenant_id: UUID, doc_id: UUID, query_vec: list[float],
         *, captured_by: str | None = None,
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """Match summary embedding against existing scopes; assign top match
         if cosine > threshold. Returns the assigned scope dict on success,
         None on miss / no-op. Non-fatal if anything raises.
@@ -383,8 +384,9 @@ class SummarizeStage:
                 }
 
     async def _record_failure(
-        self, tenant_id, doc_id, run_id, error_class, message, retriable, causation_id,
-    ):
+        self, tenant_id: UUID, doc_id: UUID, run_id: UUID, error_class: str,
+        message: str, retriable: bool, causation_id: UUID | None,
+    ) -> None:
         async with self._ctx.pool.tenant_session(tenant_id) as conn:
             run_repo = PipelineRunRepo(conn)
             outbox   = OutboxRepo(conn)

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import functools
 from dataclasses import dataclass
+from typing import Any
 
 import structlog
 
@@ -22,7 +23,7 @@ log = structlog.get_logger(__name__)
 _magic = None
 
 
-def _load_magic():  # type: ignore[no-untyped-def]
+def _load_magic() -> Any:
     global _magic
     if _magic is None:
         import magic
