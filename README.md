@@ -203,34 +203,35 @@ scripts/        migrate.sh, model-mirror instructions.
 
 ## Quickstart
 
-**Prerequisites:** Docker + Docker Compose, [`uv`](https://github.com/astral-sh/uv),
-Python 3.12+, ~6 GB free disk for models, 8 GB+ RAM.
+**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+(running), [`uv`](https://github.com/astral-sh/uv), Python 3.12+, ~6 GB free disk
+for models, 8 GB+ RAM.
 
-### One-command bootstrap
-
-```bash
-uv run woxpas-cli bootstrap
-```
-
-Checks prerequisites, starts infrastructure, creates your tenant, downloads
-models, and writes `.env` — all in one pass. Re-running is safe (idempotent).
-
-### What it does
-
-The bootstrap walks through: prerequisites → cloud API keys (optional) →
-Docker infrastructure → workspace install + migrations → tenant creation →
-model download → ready. At the end you get a summary with the exact commands
-to start the services.
-
-### Start the services
+Three commands from a fresh clone to a memory your agent can use:
 
 ```bash
-uv run woxpas-worker            # terminal A — the pipeline worker
-uv run woxpas-api               # terminal B — HTTP gateway on 127.0.0.1:7800
-uv run woxpas-dreaming-worker   # terminal C — optional background insights
+uv run woxpas-cli bootstrap              # 1. one-time setup
+uv run woxpas-cli up                     # 2. start everything
+uv run woxpas-cli install-claude-desktop # 3. wire up Claude Desktop
 ```
 
-### Ingest and query
+Then **restart Claude Desktop** — Woxpas shows up as a set of memory tools.
+
+**1. `bootstrap`** (one-time) checks prerequisites, starts the datastores,
+installs the workspace, runs migrations, creates your tenant (asks for a name +
+a passphrase that protects your encryption key), and downloads the local models.
+Re-running is safe.
+
+**2. `up`** starts the datastores and the worker, API, and dreaming worker in the
+background — no extra terminals to babysit. Logs go to `~/.woxpas/logs/`; stop
+everything with `woxpas-cli down`.
+
+**3. `install-claude-desktop`** merges a `woxpas` entry into Claude Desktop's
+config (backing up any existing file and leaving your other MCP servers alone).
+Use `--print` to see the block without writing anything, or `--path` to target a
+different file.
+
+### Try it from the terminal (optional)
 
 ```bash
 curl -X POST 127.0.0.1:7800/ingest/text \
@@ -244,12 +245,9 @@ curl -X POST 127.0.0.1:7800/recall \
   -d '{"query_text":"who owns the API?"}'
 ```
 
-> A detailed, annotated walk-through with troubleshooting and cloud deployment
-> notes lives in **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)**.
-
-Then wire an agent — the bootstrap prints a ready-to-paste Claude Desktop
-config at the end. See [The MCP tool surface](#the-mcp-tool-surface) and
-[docs/mcp/](docs/mcp/) for Cursor, custom clients, and system prompts.
+> The full annotated walk-through — manual service start, the boot daemon,
+> Cursor / custom MCP clients, troubleshooting, and cloud deployment — lives in
+> **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)**.
 
 ---
 

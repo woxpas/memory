@@ -8,6 +8,12 @@ layer that any MCP agent can talk to. Every step explains *what* it does and
 > guide is the operational manual. For an honest account of what is and isn't
 > production-ready, read [SECURITY.md](../SECURITY.md).
 
+> **Just want it running?** The short path is three commands —
+> `uv run woxpas-cli bootstrap`, then `woxpas-cli up`, then
+> `woxpas-cli install-claude-desktop` (restart Claude Desktop after). This guide
+> below is the *long* form that explains each piece and covers the manual
+> service start, the boot daemon, Cursor, and cloud deployment.
+
 ---
 
 ## Contents

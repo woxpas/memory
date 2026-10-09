@@ -16,9 +16,15 @@ dist
 node_modules
 data
 .data
-models/*.gguf
-models/*.onnx
-models/*.bin
+# Model weights + HF caches at ANY depth (downloaded at runtime into a volume;
+# never baked into the image — a stray cache under packages/ would bloat the context).
+**/*.gguf
+**/*.onnx
+**/*.bin
+**/*.safetensors
+**/models/
+**/models--*/
+**/.cache/
 boot/woxpasd
 .idea
 .vscode

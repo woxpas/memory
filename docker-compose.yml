@@ -17,6 +17,24 @@ x-hardening: &hardening
   security_opt:
     - no-new-privileges:true
 
+# Shared env for the app services — host-specific values from .env are
+# overridden here so they resolve to the compose service names, not 127.0.0.1.
+x-app-env: &app-env
+  POSTGRES_HOST: postgres
+  POSTGRES_DB: ${POSTGRES_DB}
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  QDRANT_HOST: qdrant
+  QDRANT_PORT: 6333
+  QDRANT_GRPC_PORT: 6334
+  QDRANT_API_KEY: ${QDRANT_API_KEY}
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+  MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+  CLAMAV_HOST: clamav
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  PIPELINE_VERSION: ${PIPELINE_VERSION}
+
 networks:
   woxpas-internal:
     driver: bridge
@@ -107,33 +125,37 @@ services:
       retries: 5
       start_period: 120s
 
+  # ── Application services ───────────────────────────────────────────────
+  #
+  # All four app processes run from ONE image (../Dockerfile), differing only
+  # by `command`. They are gated behind the `app` profile so a plain
+  # `docker compose up` brings up only the datastores (what `woxpas-cli up` and
+  # the bootstrap use). The supported happy path runs the app on the host via
+  # `woxpas-cli up`; running it in containers (`docker compose --profile app up`)
+  # is EXPERIMENTAL and still needs, for the API: API_HOST=0.0.0.0 to bind inside
+  # the container AND API_AUTH_MODE=jwt (the dev-auth loopback guard refuses a
+  # non-loopback bind). Tracked as a follow-up; see docs/GETTING_STARTED.md.
+
   api:
+    profiles: ["app"]
     build:
       context: .
-      dockerfile: packages/api/Dockerfile
+      dockerfile: Dockerfile
+    command: ["woxpas-api"]
     <<: [*restart, *hardening]
     depends_on:
-      postgres:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
+      postgres: {condition: service_healthy}
+      qdrant: {condition: service_healthy}
+      minio: {condition: service_healthy}
+    env_file:
+      - path: .env
+        required: false
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      QDRANT_HOST: qdrant
-      QDRANT_PORT: 6333
-      QDRANT_GRPC_PORT: 6334
-      QDRANT_API_KEY: ${QDRANT_API_KEY}
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      CLAMAV_HOST: clamav
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      PIPELINE_VERSION: ${PIPELINE_VERSION}
+      <<: *app-env
+      # Needed to bind inside the container; pair with API_AUTH_MODE=jwt (see note above).
+      API_HOST: ${WOXPAS_API_CONTAINER_HOST:-0.0.0.0}
+    volumes:
+      - models:/var/woxpas/models
     networks:
       - woxpas-internal
       - woxpas-public
@@ -144,35 +166,23 @@ services:
       - /tmp:size=64M
 
   worker-pipeline:
+    profiles: ["app"]
     build:
       context: .
-      dockerfile: packages/pipeline/Dockerfile
+      dockerfile: Dockerfile
+    command: ["woxpas-worker"]
     <<: [*restart, *hardening]
     depends_on:
-      postgres:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-      clamav:
-        condition: service_healthy
+      postgres: {condition: service_healthy}
+      qdrant: {condition: service_healthy}
+      minio: {condition: service_healthy}
+      clamav: {condition: service_healthy}
+    env_file:
+      - path: .env
+        required: false
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      QDRANT_HOST: qdrant
-      QDRANT_PORT: 6333
-      QDRANT_GRPC_PORT: 6334
-      QDRANT_API_KEY: ${QDRANT_API_KEY}
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      CLAMAV_HOST: clamav
+      <<: *app-env
       ACCEL_BACKEND: ${ACCEL_BACKEND:-auto}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      PIPELINE_VERSION: ${PIPELINE_VERSION}
     volumes:
       - models:/var/woxpas/models
     networks:
@@ -181,3 +191,51 @@ services:
     tmpfs:
       - /tmp:size=512M
     # No ports — pull-based worker.
+
+  dreaming-worker:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["woxpas-dreaming-worker"]
+    <<: [*restart, *hardening]
+    depends_on:
+      postgres: {condition: service_healthy}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+    volumes:
+      - models:/var/woxpas/models
+    networks:
+      - woxpas-internal
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M
+    # No ports — background insights loop.
+
+  mcp:
+    # Stdio MCP server, meant for `docker compose run --rm mcp`, not `up`.
+    profiles: ["mcp"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["woxpas-mcp-server"]
+    <<: *hardening
+    stdin_open: true
+    tty: false
+    depends_on:
+      postgres: {condition: service_healthy}
+      qdrant: {condition: service_healthy}
+      minio: {condition: service_healthy}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+      WOXPAS_MCP_TENANT_ID: ${WOXPAS_DEV_TENANT_ID_DEFAULT:-}
+    volumes:
+      - models:/var/woxpas/models
+    networks:
+      - woxpas-internal

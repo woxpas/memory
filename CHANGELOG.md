@@ -12,6 +12,17 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   check).
 - `docker-compose.override.yml.example` so a fresh clone has the local-dev
   port-exposure template.
+- **Simpler setup.** `woxpas-cli up` / `woxpas-cli down` start and stop the whole
+  instance (datastores + worker + API + dreaming worker) with one command —
+  no more three always-on terminals; logs land in `~/.woxpas/logs/`.
+  `woxpas-cli install-claude-desktop` merges the MCP server into Claude Desktop's
+  config safely (OS-path detection, backup, leaves other servers untouched).
+  Bootstrap's final screen and the README now point at this 3-command path.
+- Root `Dockerfile` (one image for all app processes) as groundwork for an
+  all-in-Docker run; the app services in `docker-compose.yml` are gated behind
+  the `app` profile and documented as experimental (the API needs
+  `API_AUTH_MODE=jwt` in a container — the dev-auth loopback guard blocks a
+  non-loopback bind).
 
 ### Changed
 - Curated the `ruff` configuration to reflect the project's house style
@@ -22,6 +33,13 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   third-party libraries in `[tool.mypy.overrides]`.
 
 ### Fixed
+- Bootstrap no longer prints a contradictory "leave empty for a no-passphrase
+  install" hint and then rejects an empty passphrase; the prompt is now honest
+  (a passphrase is required).
+- `docker-compose.yml` referenced `packages/*/Dockerfile` files that don't exist
+  (a plain `docker compose up` would fail to build); the app services now build
+  from the real root `Dockerfile` and are profile-gated so the default
+  `docker compose up` brings up only the datastores.
 - `resurface_build_identity`: persona-tone JSON is now built with `json.dumps`
   instead of string concatenation, so a tone value containing quotes or braces
   can no longer corrupt the stored profile or silently fail the write; the

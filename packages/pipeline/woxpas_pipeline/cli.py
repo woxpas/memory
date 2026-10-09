@@ -21,8 +21,10 @@ import asyncio
 import getpass
 import json
 import os
+import shutil
 import sys
 from datetime import UTC
+from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -476,7 +478,8 @@ async def cmd_bootstrap(args: argparse.Namespace) -> int:
             print("[woxpas] display name required.")
             return 1
 
-        print("  (leave empty for a quick no-passphrase dev install)")
+        print("  Choose a passphrase — it protects your data-encryption key")
+        print("  (Argon2id). You'll enter it again to unlock after a restart.")
         passphrase = _read_passphrase(prompt="  Passphrase: ", confirm=True)
         if not passphrase:
             print("[woxpas] passphrase required.")
@@ -631,48 +634,28 @@ async def cmd_bootstrap(args: argparse.Namespace) -> int:
     # ── 7. Ready ──────────────────────────────────────────────────────────
     print("\n── Ready ───────────────────────────────────────────────────")
     print(f"""
-  Start the services (3 terminals or a process manager):
+  Two commands and you're live:
 
-    woxpas-worker            # pipeline worker
-    woxpas-api               # HTTP gateway → http://127.0.0.1:7800
-    woxpas-dreaming-worker   # background insights (optional)
+    woxpas-cli up                      # start everything (one command)
+    woxpas-cli install-claude-desktop  # wire up Claude Desktop, then restart it
 
-  Or use the boot daemon to keep the DEK off disk:
+  `up` starts the data services + the worker, API, and dreaming worker in the
+  background (logs in ~/.woxpas/logs). Stop them any time with `woxpas-cli down`.
 
-    woxpas-cli unlock
-
-  Quick test:
+  Quick test once it's up:
 
     curl -X POST http://127.0.0.1:7800/ingest/text \\
       -H "X-Woxpas-Tenant-Id: {tenant_id}" \\
       -H "Content-Type: application/json" \\
       -d '{{"content_text":"Hello Woxpas!"}}'
 
-  Claude Desktop — paste into ~/Library/Application Support/Claude/
-  claude_desktop_config.json:""")
-
-    # Generate the MCP config block from the env values we just wrote.
-    pg_password = existing_env.get("POSTGRES_PASSWORD", "")
-    qdrant_key  = existing_env.get("QDRANT_API_KEY", "")
-    minio_pw    = existing_env.get("MINIO_ROOT_PASSWORD", "")
-    cwd_str = str(Path.cwd())
-    mcp_json = _mcp_config_json(
-        cwd=cwd_str,
-        tenant_id=str(tenant_id),
-        pg_password=pg_password,
-        qdrant_key=qdrant_key,
-        minio_password=minio_pw,
-        dek_hex=dek_hex,
-    )
-    print(f"""
-{mcp_json}
-
-  Full docs: docs/GETTING_STARTED.md
+  Prefer the DEK off disk? Run `woxpas-cli unlock` (boot daemon) before `up`.
+  Full docs + the manual start option: docs/GETTING_STARTED.md
 """)
     return 0
 
 
-def _mcp_config_json(
+def _mcp_server_block(
     *,
     cwd: str,
     tenant_id: str,
@@ -680,40 +663,240 @@ def _mcp_config_json(
     qdrant_key: str,
     minio_password: str,
     dek_hex: str,
-) -> str:
-    """Generate a Claude Desktop MCP config block with the current secrets."""
-    import json as _json
-    config = {
-        "mcpServers": {
-            "woxpas": {
-                "command": "uv",
-                "args": [
-                    "run",
-                    "--directory",
-                    cwd,
-                    "woxpas-mcp-server",
-                ],
-                "env": {
-                    "WOXPAS_MCP_TENANT_ID": tenant_id,
-                    "POSTGRES_HOST": "127.0.0.1",
-                    "POSTGRES_PORT": "5432",
-                    "POSTGRES_DB": "woxpas",
-                    "POSTGRES_USER": "woxpas",
-                    "POSTGRES_PASSWORD": pg_password,
-                    "QDRANT_HOST": "127.0.0.1",
-                    "QDRANT_PORT": "6333",
-                    "QDRANT_GRPC_PORT": "6334",
-                    "QDRANT_API_KEY": qdrant_key,
-                    "MINIO_ENDPOINT": "127.0.0.1:9000",
-                    "MINIO_ROOT_USER": "woxpas",
-                    "MINIO_ROOT_PASSWORD": minio_password,
-                    "WOXPAS_DEV_TENANT_ID_DEFAULT": tenant_id,
-                    "WOXPAS_DEV_DEK_HEX": dek_hex,
-                },
-            }
-        }
+) -> dict[str, Any]:
+    """The single `woxpas` MCP-server entry for a Claude Desktop config."""
+    return {
+        "command": "uv",
+        "args": ["run", "--directory", cwd, "woxpas-mcp-server"],
+        "env": {
+            "WOXPAS_MCP_TENANT_ID": tenant_id,
+            "POSTGRES_HOST": "127.0.0.1",
+            "POSTGRES_PORT": "5432",
+            "POSTGRES_DB": "woxpas",
+            "POSTGRES_USER": "woxpas",
+            "POSTGRES_PASSWORD": pg_password,
+            "QDRANT_HOST": "127.0.0.1",
+            "QDRANT_PORT": "6333",
+            "QDRANT_GRPC_PORT": "6334",
+            "QDRANT_API_KEY": qdrant_key,
+            "MINIO_ENDPOINT": "127.0.0.1:9000",
+            "MINIO_ROOT_USER": "woxpas",
+            "MINIO_ROOT_PASSWORD": minio_password,
+            "WOXPAS_DEV_TENANT_ID_DEFAULT": tenant_id,
+            "WOXPAS_DEV_DEK_HEX": dek_hex,
+        },
     }
-    return _json.dumps(config, indent=2)
+
+
+def _claude_desktop_config_path() -> Path:
+    """The Claude Desktop MCP config path for the current OS."""
+    from pathlib import Path as Path
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+    if sys.platform.startswith("win"):
+        base = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+        return Path(base) / "Claude" / "claude_desktop_config.json"
+    # Linux / other
+    base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+    return Path(base) / "Claude" / "claude_desktop_config.json"
+
+
+async def cmd_install_claude_desktop(args: argparse.Namespace) -> int:
+    """Merge the Woxpas MCP server into Claude Desktop's config file.
+
+    Reads secrets + tenant from .env, detects the OS config path, and merges
+    (never clobbers) a `woxpas` entry under `mcpServers`. Backs up any existing
+    file first. Pass --path to target a different config file, --print to only
+    print the block.
+    """
+    import json as _json
+    from pathlib import Path as Path
+
+    env = _read_env(_ENV_PATH)
+    tenant_id = env.get("WOXPAS_DEV_TENANT_ID_DEFAULT", "")
+    dek_hex = env.get("WOXPAS_DEV_DEK_HEX", "")
+    if not tenant_id or not dek_hex:
+        print("[woxpas] no tenant found in .env — run `woxpas-cli bootstrap` first.")
+        return 1
+
+    block = _mcp_server_block(
+        cwd=str(Path.cwd()),
+        tenant_id=tenant_id,
+        pg_password=env.get("POSTGRES_PASSWORD", ""),
+        qdrant_key=env.get("QDRANT_API_KEY", ""),
+        minio_password=env.get("MINIO_ROOT_PASSWORD", ""),
+        dek_hex=dek_hex,
+    )
+
+    if args.print:
+        print(_json.dumps({"mcpServers": {"woxpas": block}}, indent=2))
+        return 0
+
+    cfg_path = Path(args.path) if args.path else _claude_desktop_config_path()
+
+    existing: dict[str, Any] = {}
+    if cfg_path.is_file():
+        try:
+            existing = _json.loads(cfg_path.read_text() or "{}")
+        except (ValueError, OSError) as e:
+            print(f"[woxpas] couldn't read {cfg_path}: {e}")
+            print("  Fix or move the file, then re-run. (Use --print to copy the block manually.)")
+            return 1
+        if not isinstance(existing, dict):
+            print(f"[woxpas] {cfg_path} isn't a JSON object — refusing to overwrite.")
+            return 1
+        # Back up before touching an existing config.
+        backup = cfg_path.with_suffix(cfg_path.suffix + ".woxpas-bak")
+        backup.write_text(cfg_path.read_text())
+        print(f"  backed up existing config → {backup}")
+
+    servers = existing.setdefault("mcpServers", {})
+    if not isinstance(servers, dict):
+        print(f"[woxpas] 'mcpServers' in {cfg_path} isn't an object — refusing to overwrite.")
+        return 1
+    overwrote = "woxpas" in servers
+    servers["woxpas"] = block
+
+    cfg_path.parent.mkdir(parents=True, exist_ok=True)
+    cfg_path.write_text(_json.dumps(existing, indent=2) + "\n")
+
+    print(f"  {'updated' if overwrote else 'added'} the 'woxpas' MCP server in {cfg_path}")
+    other = [k for k in servers if k != "woxpas"]
+    if other:
+        print(f"  (left your other MCP servers untouched: {', '.join(other)})")
+    print("\n  Restart Claude Desktop to pick it up.")
+    return 0
+
+
+def _woxpas_home() -> Path:
+    """Runtime dir for managed-process pidfiles + logs (~/.woxpas)."""
+    d = Path(os.environ.get("WOXPAS_HOME", str(Path.home() / ".woxpas")))
+    (d / "logs").mkdir(parents=True, exist_ok=True)
+    return d
+
+
+# (name, console-script) for the long-running app processes `up` manages.
+_APP_PROCS = [
+    ("worker",   "woxpas-worker"),
+    ("api",      "woxpas-api"),
+    ("dreaming", "woxpas-dreaming-worker"),
+]
+
+
+def _proc_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+async def cmd_up(args: argparse.Namespace) -> int:
+    """One command to bring the whole instance up: data services (Docker) +
+    the pipeline worker, API, and dreaming worker (managed background
+    processes). Re-runnable — skips anything already running. `woxpas-cli down`
+    stops the app processes again.
+    """
+    import subprocess as _sp
+
+    env = _read_env(_ENV_PATH)
+    if not env.get("WOXPAS_DEV_TENANT_ID_DEFAULT"):
+        print("[woxpas] no tenant yet — run `woxpas-cli bootstrap` first.")
+        return 1
+    home = _woxpas_home()
+
+    # 1. Data services (Postgres / Qdrant / MinIO / ClamAV) via Docker.
+    docker = shutil.which("docker") or "docker"
+    compose_files = ["docker-compose.yml"]
+    if Path("docker-compose.override.yml").is_file():
+        compose_files.append("docker-compose.override.yml")
+    cargs: list[str] = []
+    for cf in compose_files:
+        cargs += ["-f", cf]
+    print("── Data services ──────────────────────────────────────────")
+    _sp.run(
+        [docker, "compose", *cargs, "up", "-d",
+         "postgres", "qdrant", "minio", "clamav"],
+        check=True,
+    )
+
+    # 2. Migrations (idempotent — safe to run every time).
+    migrate = Path("scripts/migrate.sh")
+    if migrate.is_file():
+        _sp.run(["bash", str(migrate)], check=False)
+
+    # 3. App processes — detached, one log + pidfile each under ~/.woxpas.
+    print("\n── App services ───────────────────────────────────────────")
+    for name, script in _APP_PROCS:
+        if name == "dreaming" and args.no_dreaming:
+            continue
+        pidf = home / f"{name}.pid"
+        if pidf.is_file():
+            try:
+                old = int(pidf.read_text().strip())
+                if _proc_alive(old):
+                    print(f"  • {name} already running (pid {old})")
+                    continue
+            except ValueError:
+                pass
+        log_path = home / "logs" / f"{name}.log"
+        logf = log_path.open("a")
+        proc = _sp.Popen(
+            ["uv", "run", script],
+            stdout=logf, stderr=_sp.STDOUT, stdin=_sp.DEVNULL,
+            start_new_session=True,
+        )
+        pidf.write_text(str(proc.pid))
+        print(f"  ✓ {name:<9s} (pid {proc.pid}) → {log_path}")
+
+    api_port = env.get("API_PORT", "7800")
+    print(f"""
+  Up. API → http://127.0.0.1:{api_port}
+
+    Logs:   tail -f {home}/logs/*.log
+    Stop:   woxpas-cli down
+    Claude: woxpas-cli install-claude-desktop
+""")
+    return 0
+
+
+async def cmd_down(args: argparse.Namespace) -> int:
+    """Stop the app processes started by `up`. Data services (Docker) are left
+    running by default so the MCP server keeps working; pass --docker to stop
+    those too.
+    """
+    import signal as _sig
+
+    home = _woxpas_home()
+    stopped = 0
+    for name, _script in _APP_PROCS:
+        pidf = home / f"{name}.pid"
+        if not pidf.is_file():
+            continue
+        try:
+            pid = int(pidf.read_text().strip())
+        except ValueError:
+            pidf.unlink(missing_ok=True)
+            continue
+        if _proc_alive(pid):
+            try:
+                os.kill(pid, _sig.SIGTERM)
+                stopped += 1
+                print(f"  ✓ stopped {name} (pid {pid})")
+            except OSError as e:
+                print(f"  ⚠ couldn't stop {name} (pid {pid}): {e}")
+        pidf.unlink(missing_ok=True)
+    if stopped == 0:
+        print("  (no managed app processes were running)")
+
+    if args.docker:
+        import subprocess as _sp
+        docker = shutil.which("docker") or "docker"
+        _sp.run([docker, "compose", "stop"], check=False)
+        print("  ✓ stopped data services")
+    else:
+        print("  Data services left running — stop them with:  docker compose stop")
+    return 0
 
 
 async def _download_artefacts(artefacts: list[Any]) -> None:
@@ -2555,6 +2738,29 @@ def _build_parser() -> argparse.ArgumentParser:
     bs.add_argument("--yes", "-y", action="store_true",
                     help="Skip confirmation prompts (for scripted installs)")
     bs.set_defaults(func=cmd_bootstrap)
+
+    up = sub.add_parser("up",
+                        help="Start everything: data services (Docker) + the worker, "
+                             "API, and dreaming worker (one command, no extra terminals)")
+    up.add_argument("--no-dreaming", action="store_true",
+                    help="Don't start the optional background dreaming worker")
+    up.set_defaults(func=cmd_up)
+
+    down = sub.add_parser("down",
+                          help="Stop the app processes started by `up` "
+                               "(data services stay up unless --docker)")
+    down.add_argument("--docker", action="store_true",
+                      help="Also stop the Docker data services")
+    down.set_defaults(func=cmd_down)
+
+    icd = sub.add_parser("install-claude-desktop",
+                         help="Add the Woxpas MCP server to Claude Desktop's config "
+                              "(merges safely; backs up any existing file)")
+    icd.add_argument("--path", default=None,
+                     help="Write to this config file instead of the OS default")
+    icd.add_argument("--print", action="store_true",
+                     help="Only print the JSON block; don't modify any file")
+    icd.set_defaults(func=cmd_install_claude_desktop)
 
     init = sub.add_parser("init-tenant",
                           help="Create a new tenant + default file source + self-entity")
