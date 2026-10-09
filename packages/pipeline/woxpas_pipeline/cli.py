@@ -714,21 +714,20 @@ async def cmd_init_env(args: argparse.Namespace) -> int:
 
     env_path = Path(_ENV_PATH)
     example = Path(".env.example")
-    if not env_path.is_file():
-        if example.is_file():
-            env_path.write_text(example.read_text())
-            print(f"  created {env_path} from .env.example")
-        else:
-            env_path.write_text("")
-            print(f"  created empty {env_path}")
 
-    env = _read_env(_ENV_PATH)
+    env = _read_env(_ENV_PATH) if env_path.is_file() else {}
+    # Fill every key the template defines that .env doesn't already have — so a
+    # pre-created (e.g. `touch`ed) empty .env still ends up complete.
+    if example.is_file():
+        for k, v in _read_env(".env.example").items():
+            env.setdefault(k, v)
+
     generated = []
     for key in ("POSTGRES_PASSWORD", "QDRANT_API_KEY", "MINIO_ROOT_PASSWORD"):
         if not env.get(key):
             env[key] = _secrets.token_hex(24)
             generated.append(key)
-    # Sensible defaults if the template didn't carry them.
+    # Sensible defaults if the template was absent.
     env.setdefault("POSTGRES_DB", "woxpas")
     env.setdefault("POSTGRES_USER", "woxpas")
     env.setdefault("MINIO_ROOT_USER", "woxpas")
@@ -1080,15 +1079,27 @@ async def cmd_init_tenant(args: argparse.Namespace) -> int:
         "identity_facts":  imported_facts if args.identity_from else "(none — pass --identity-from to import)",
     })
 
-    if args.dev:
+    if getattr(args, "write_env", False):
+        # Persist tenant id + the unwrapped DEK into .env so the local install
+        # (host or containers) can decrypt without a running boot daemon. This
+        # is the dev-convenience path; the boot daemon keeps the DEK off disk.
+        env = _read_env(_ENV_PATH)
+        env["WOXPAS_DEV_TENANT_ID_DEFAULT"] = str(tenant_id)
+        env["WOXPAS_DEV_DEK_HEX"] = secrets.dek.hex()
+        if not env.get("API_AUTH_MODE"):
+            env["API_AUTH_MODE"] = "dev"
+        _write_env(_ENV_PATH, env)
+        print(f"\n[woxpas-cli] wrote WOXPAS_DEV_TENANT_ID_DEFAULT + WOXPAS_DEV_DEK_HEX to {_ENV_PATH}")
+    elif args.dev:
         print("\n[woxpas-cli] dev mode: copy these into your .env\n")
         print(f"WOXPAS_DEV_TENANT_ID_DEFAULT={tenant_id}")
         print(f"WOXPAS_DEV_DEK_HEX={secrets.dek.hex()}")
         print("# (the DEK is the plaintext key; treat it as a secret)\n")
     else:
         print(
-            "\n[woxpas-cli] DEK was NOT printed (run with --dev to print for local use).\n"
-            "             Production boot service will unwrap from Postgres + passphrase."
+            "\n[woxpas-cli] DEK was NOT printed (run with --dev to print, or --write-env\n"
+            "             to write it to .env). Production boot service unwraps from\n"
+            "             Postgres + passphrase instead."
         )
 
     # Best-effort: zeroize the local copy of DEK in our process memory.
@@ -2834,6 +2845,9 @@ def _build_parser() -> argparse.ArgumentParser:
                            "Use 'woxpas-cli identity-template' to print the export prompt.")
     init.add_argument("--dev", action="store_true",
                       help="Print plaintext DEK hex for local development")
+    init.add_argument("--write-env", action="store_true",
+                      help="Write WOXPAS_DEV_TENANT_ID_DEFAULT + WOXPAS_DEV_DEK_HEX to "
+                           ".env (used by the Docker-only install)")
     init.set_defaults(func=cmd_init_tenant)
 
     idt = sub.add_parser("identity-template",

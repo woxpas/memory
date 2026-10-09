@@ -39,6 +39,13 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   third-party libraries in `[tool.mypy.overrides]`.
 
 ### Fixed
+- Docker-only install (caught by a clean-clone test): `woxpas-cli init-env` now
+  fills every key from `.env.example` even when `.env` already exists as an empty
+  file (install.sh `touch`es it for the bind-mount), so the generated `.env` is
+  complete; `woxpas-cli init-tenant --write-env` writes the tenant id + DEK to
+  `.env` so the containers can decrypt (standalone init-tenant previously only
+  created the row); `install.sh` runs `init-env` with `-T` so the TTY stays free
+  for the interactive passphrase prompt.
 - Bootstrap no longer prints a contradictory "leave empty for a no-passphrase
   install" hint and then rejects an empty passphrase; the prompt is now honest
   (a passphrase is required).

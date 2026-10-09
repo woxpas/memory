@@ -30,7 +30,7 @@ docker compose build
 echo
 echo "== Generating infrastructure secrets (.env) =="
 touch .env                       # so Docker can bind-mount the file
-docker compose run --rm cli woxpas-cli init-env
+docker compose run --rm -T cli woxpas-cli init-env   # -T: non-interactive, leaves the TTY free for the passphrase step
 
 echo
 echo "== Starting datastores + workers =="
@@ -38,7 +38,7 @@ docker compose --profile app up -d
 
 echo
 echo "== Creating your tenant — choose a passphrase when prompted =="
-docker compose run --rm cli woxpas-cli init-tenant --display-name "$NAME"
+docker compose run --rm cli woxpas-cli init-tenant --display-name "$NAME" --with-inbox --write-env
 
 echo
 echo "== Loading your key into the running services =="
