@@ -67,7 +67,7 @@ git clone <your-fork-or-repo-url> woxpas-memory
 cd woxpas-memory
 ```
 
-The repo is a `uv` workspace: ten packages under `packages/`, infra under
+The repo is a `uv` workspace: eleven packages under `packages/`, infra under
 `infra/` and `docker-compose.yml`, and the database schema under `migrations/`.
 
 ---
@@ -416,7 +416,7 @@ Recall intents you can hint (`--intent` / `intent_hint`): `semantic`,
 ## 12. Connect an MCP agent
 
 The MCP server is spawned **per agent** as a stdio subprocess. It binds to one
-tenant via env and exposes all 27 tools. The tenant is never a tool argument.
+tenant via env and exposes all 28 tools. The tenant is never a tool argument.
 
 ### Claude Desktop
 
@@ -524,7 +524,7 @@ Smoke batteries live in `tests/smoke/`. They spin up real requests against a
 running stack (start the infra + worker + API first) and assert pass/fail.
 
 ```bash
-# Comprehensive MCP coverage (27 tools, RLS canary, parallel recalls)
+# Comprehensive MCP coverage (28 tools, RLS canary, parallel recalls)
 tests/smoke/phase_5a55_mcp_full.sh
 
 # Resurfacing layer
@@ -609,7 +609,7 @@ You have a running memory layer. Here's where to go next:
   instructions for your agent. Tells it to use Woxpas for memory instead of
   its own ephemeral context. Versions for Claude Desktop, Cursor, and any
   MCP-capable agent.
-- **[docs/mcp/tools.md](mcp/tools.md)** — full 27-tool inventory with
+- **[docs/mcp/tools.md](mcp/tools.md)** — full 28-tool inventory with
   session patterns and error codes.
 - **[docs/mcp/](mcp/)** — wire up Claude Desktop, Cursor, or any custom
   MCP client.

@@ -1,6 +1,6 @@
 # Woxpas MCP tool inventory
 
-27 tools (13 memory + 14 resurface). For end-to-end session walkthroughs,
+28 tools (13 memory + 15 resurface). For end-to-end session walkthroughs,
 see **[workflows.md](workflows.md)**. For what Woxpas actually does for you
 day-to-day, see **[../examples.md](../examples.md)**.
 
@@ -42,7 +42,7 @@ Session end:
 | `memory_get_conflict` | Full conflict detail + per-side claims + suggested resolution shapes. |
 | `memory_resolve_conflict` | Apply resolution: pick / coexistence / progression / dismissed. Discriminated by `kind`. |
 
-## Resurface (14)
+## Resurface (15)
 
 | tool | when to use |
 |---|---|
@@ -60,6 +60,7 @@ Session end:
 | `resurface_mark_executed` | approved → executed (after agent ran the action via its own connector). |
 | `resurface_upsert_persona` | Deep-merge a behavioral persona/tone patch. Stored in `persona_tone`, not the knowledge graph. |
 | `resurface_record_decision` | Record an agent decision for pattern mining over time. |
+| `resurface_build_identity` | Cold-start self-service identity: one call writes user-asserted profile facts (bio, work, comm style, location, interests, expertise) straight to the graph at confidence 1.0 — no extraction wait. |
 
 ## Error codes
 

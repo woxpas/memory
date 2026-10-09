@@ -1,6 +1,6 @@
 # Woxpas MCP server
 
-Stdio MCP server exposing 27 tools (13 `memory_*` + 14 `resurface_*`)
+Stdio MCP server exposing 28 tools (13 `memory_*` + 15 `resurface_*`)
 for any MCP-capable agent (Claude Desktop, Cursor, custom).
 
 ## Quick start

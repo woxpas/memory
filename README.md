@@ -101,7 +101,7 @@ It runs continuously in the background to make the memory *anti-fade* and
 ┌───────────────────────────────────────────────────────────┐
 │  Any MCP agent   (Claude Desktop / Cursor / custom)        │
 └───────────────────────────┬───────────────────────────────┘
-                            │ MCP protocol · stdio · 27 tools
+                            │ MCP protocol · stdio · 28 tools
 ┌───────────────────────────▼───────────────────────────────┐
 │  Woxpas MCP server         memory.*  +  resurface.*        │
 ├───────────────────────────────────────────────────────────┤
@@ -190,7 +190,7 @@ packages/
                 and verifier, cloud-policy gating.
   resurfacing/  The "dreaming" worker, pattern scorers, opportunity detectors,
                 score maintainer, scope reassigner; `woxpas-dreaming-worker`.
-  mcp/          The stdio MCP server exposing 27 tools over the shared engines.
+  mcp/          The stdio MCP server exposing 28 tools over the shared engines.
   boot/         `woxpas-unlock` — passphrase → Argon2id KEK → unwrap DEK → serve
                 it over a chmod-600 Unix socket (keeps the DEK off disk).
 
@@ -267,8 +267,8 @@ curl -X POST 127.0.0.1:7800/recall \
 
 ## The MCP tool surface
 
-Drop a config snippet into your agent and it immediately gets **27 tools**
-(13 `memory.*` + 14 `resurface.*`). Paste the **[system prompt](docs/mcp/system-prompt.md)**
+Drop a config snippet into your agent and it immediately gets **28 tools**
+(13 `memory.*` + 15 `resurface.*`). Paste the **[system prompt](docs/mcp/system-prompt.md)**
 into your agent's instructions so it knows to use Woxpas for memory instead
 of its own ephemeral context.
 
@@ -290,7 +290,7 @@ resolve_conflict.
 record_observation, get_preferences, get_tool_suggestions, get_predicted_actions,
 get_predicted_questions, post_prepared_action, list_prepared_actions,
 approve_prepared_action, reject_prepared_action, mark_executed, upsert_persona,
-record_decision.
+record_decision, build_identity.
 
 The MCP server is **fail-closed**: it refuses to start without a
 `WOXPAS_MCP_TENANT_ID`, and the tenant is *never* accepted as a tool argument —
@@ -361,7 +361,7 @@ any non-local deployment.
 ## Current status
 
 All four pipelines plus the resurfacing layer are implemented, covered by 21
-smoke batteries, and expose a stable 27-tool MCP surface. The passphrase → KEK
+smoke batteries, and expose a stable 28-tool MCP surface. The passphrase → KEK
 → DEK boot daemon (`woxpas-unlock`) closes the plaintext-key gap.
 
 Known limitations (see [SECURITY.md](SECURITY.md) for details):
