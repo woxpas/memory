@@ -25,16 +25,20 @@ fi
 
 echo
 echo "== Building the Woxpas image (first run compiles the local LLM — a few minutes) =="
-docker compose build
+# Build the profile-gated app services explicitly — a bare `docker compose build`
+# skips them, which can leave a stale image in place on a re-install.
+docker compose --profile cli --profile app build
 
 echo
 echo "== Generating infrastructure secrets (.env) =="
 touch .env                       # so Docker can bind-mount the file
-docker compose run --rm -T cli woxpas-cli init-env   # -T: non-interactive, leaves the TTY free for the passphrase step
+# --build guards against reusing a stale image; -T keeps this non-interactive so
+# the TTY stays free for the passphrase prompt below.
+docker compose run --rm --build -T cli woxpas-cli init-env
 
 echo
 echo "== Starting datastores + workers =="
-docker compose --profile app up -d
+docker compose --profile app up -d --build
 
 echo
 echo "== Creating your tenant — choose a passphrase when prompted =="
