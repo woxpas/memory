@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest an improvement or new capability.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What are you trying to do that Woxpas doesn't let you do well today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: pillars
+    attributes:
+      label: Four-pillar impact
+      description: >
+        How does this affect speed, accuracy, security, and sovereignty? Call
+        out any trade (e.g. "adds a cloud dependency to a default path").
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

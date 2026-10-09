@@ -1,0 +1,55 @@
+name: Bug report
+description: Something isn't working as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. For anything security-sensitive, stop and follow
+        [SECURITY.md](../blob/main/SECURITY.md) instead of filing publicly.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: Steps to reproduce → expected → actual.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / errors
+      description: Paste any error output. Redact tenant IDs, keys, and personal data.
+      render: shell
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - ingestion / pipeline
+        - extraction / knowledge graph
+        - retrieval
+        - synthesis
+        - resurfacing
+        - MCP server
+        - HTTP API
+        - storage / crypto / migrations
+        - bootstrap / CLI / ops
+        - docs
+        - not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: v0.1.0 or a commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: OS, Python version, auth mode (dev / single_tenant_local / jwt), local vs cloud LLM.
+    validations:
+      required: true

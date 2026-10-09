@@ -1,0 +1,23 @@
+# Local dev overlay template. Copy to `docker-compose.override.yml`
+# (which is .gitignored and auto-loaded by `docker compose`):
+#
+#     cp docker-compose.override.yml.example docker-compose.override.yml
+#
+# Exposes service ports on 127.0.0.1 ONLY so the host can run the CLI / API / worker
+# directly. Production compose has zero port mappings (services unreachable except
+# through the API gateway).
+
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+  qdrant:
+    ports:
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
+  minio:
+    ports:
+      - "127.0.0.1:9000:9000"
+  clamav:
+    ports:
+      - "127.0.0.1:3310:3310"

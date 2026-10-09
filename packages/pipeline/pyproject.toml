@@ -1,0 +1,40 @@
+[project]
+name = "woxpas-pipeline"
+version = "0.1.0"
+description = "Woxpas ingestion pipeline stages and worker"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+
+dependencies = [
+  "woxpas-core",
+  "woxpas-storage",
+  "woxpas-runtime",
+  "woxpas-retrieval",            # CLI's `recall` subcommand uses the engine
+  "woxpas-boot",                 # unlock/lock CLI commands + boot client
+  "python-magic>=0.4.27",
+  "pdfplumber>=0.11",
+  "python-docx>=1.1",          # MIT, DOCX extraction
+  "pysbd>=0.3",                # MIT, multilingual sentence segmentation
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "python-dotenv>=1.0",        # BSD-3, loads .env into os.environ for cloud LLM keys at entrypoint
+  "structlog>=24.4",
+]
+
+[tool.uv.sources]
+woxpas-core      = { workspace = true }
+woxpas-storage   = { workspace = true }
+woxpas-runtime   = { workspace = true }
+woxpas-retrieval = { workspace = true }
+woxpas-boot      = { workspace = true }
+
+[project.scripts]
+woxpas-worker = "woxpas_pipeline.worker:main"
+woxpas-cli    = "woxpas_pipeline.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["woxpas_pipeline"]

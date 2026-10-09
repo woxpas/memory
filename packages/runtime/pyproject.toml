@@ -1,0 +1,33 @@
+[project]
+name = "woxpas-runtime"
+version = "0.1.0"
+description = "Woxpas model runtimes — embedder (ONNX BGE-M3), summarizer (Qwen via llama.cpp), ASR (whisper.cpp)"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+
+dependencies = [
+  "woxpas-core",
+  "huggingface-hub>=0.27",
+  # ONNX path — no torch, no transformers, cross-platform wheels.
+  # 1.24+ dropped Intel-macOS wheels; 1.23.x is the last that ships them.
+  # Apple Silicon / Linux / Windows ride the latest.
+  "onnxruntime>=1.23,<1.24 ; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+  "onnxruntime>=1.20       ; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+  "tokenizers>=0.20",
+  "llama-cpp-python>=0.3",     # MIT; pre-built wheels for CPU/Metal/CUDA via env CMAKE_ARGS at install time
+  "faster-whisper>=1.1",       # MIT; CTranslate2-based, no torch, cross-platform wheels
+  "httpx>=0.27",               # BSD-3; async HTTP for cloud LLM backends (DeepSeek/Anthropic/etc.)
+  "numpy>=1.24",
+  "structlog>=24.4",
+  "pydantic-settings>=2.6",
+]
+
+[tool.uv.sources]
+woxpas-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["woxpas_runtime"]

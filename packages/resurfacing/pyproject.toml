@@ -1,0 +1,41 @@
+[project]
+name = "woxpas-resurfacing"
+version = "0.1.0"
+description = "Woxpas resurfacing — thinking brain, dormant brain, dreaming, tool-use patterns. Plug-and-play for any agent (NOYU + 3rd-party MCP)."
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+
+dependencies = [
+  "woxpas-core",
+  "woxpas-storage",
+  "woxpas-pipeline",   # for boot.load_env (CLI entry point)
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "structlog>=24.4",
+]
+
+[project.optional-dependencies]
+# The dreaming worker's cloud question pre-cache (opt-in per tenant) drives
+# retrieval + synthesis. Kept optional so the base install stays lean and
+# fully offline; install with `woxpas-resurfacing[question-cache]` to enable.
+question-cache = [
+  "woxpas-retrieval",
+  "woxpas-synthesis",
+]
+
+[tool.uv.sources]
+woxpas-core      = { workspace = true }
+woxpas-storage   = { workspace = true }
+woxpas-pipeline  = { workspace = true }
+woxpas-retrieval = { workspace = true }
+woxpas-synthesis = { workspace = true }
+
+[project.scripts]
+woxpas-dreaming-worker = "woxpas_resurfacing.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["woxpas_resurfacing"]

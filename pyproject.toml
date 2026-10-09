@@ -1,0 +1,78 @@
+[project]
+name = "woxpas"
+version = "0.1.0"
+description = "Woxpas — sovereign personal memory layer (ingestion pipeline)"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+
+[tool.uv.workspace]
+members = [
+  "packages/core",
+  "packages/storage",
+  "packages/adapters",
+  "packages/pipeline",
+  "packages/api",
+  "packages/runtime",
+  "packages/retrieval",
+  "packages/synthesis",
+  "packages/resurfacing",
+  "packages/mcp",
+  "packages/boot",
+]
+# `crypto` and `classifier` packages will be added here when they land.
+
+# ONNX path — no torch, no transformers. numpy floats freely; Python version
+# is selected by the user's environment, not pinned by us.
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.24",
+  "ruff>=0.7",
+  "mypy>=1.13",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "B", "UP", "ASYNC", "S", "RUF"]
+ignore = [
+  "S101",            # asserts are fine (tests, internal invariants)
+  "E501",            # line length: long MCP tool docstrings + Annotated[...] hints; code width is governed by `ruff format`
+  "N806",            # function-local CONST_CASE: sentinels (_DONE), ANSI color codes, local lookup tables — intentional
+  "N818",            # exceptions named as states by convention (CloudPolicyDenied, ToolError), not always *Error
+  "RUF001", "RUF002", "RUF003",  # deliberate Unicode typography (em dash, box-drawing) in docs/comments/strings
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test code: asserts (S), plus the compact style smoke-probe scripts use
+# (inline semicolons, intentionally-unused locals/unpackings, loop vars).
+"**/tests/**" = ["S", "E702", "F841", "RUF059", "B007"]
+# The admin CLI is synchronous-interactive by nature: it spawns the boot-daemon
+# subprocess (S603/S607, args built from typed params — see call-site comments)
+# and does blocking console I/O — prompts and small file reads (ASYNC*).
+# S110/S112: the CLI's probes are deliberately best-effort — docker/compose
+# detection, disk-space check, health polling, optional-LLM load, per-table export.
+"packages/pipeline/woxpas_pipeline/cli.py" = ["S603", "S607", "ASYNC", "S608", "S110", "S112"]
+# S608 (dynamic SQL): these modules are query builders. They interpolate ONLY
+# positional placeholders (`${len(params)}`), fixed column-name constants, and
+# internal table aliases — never user-supplied values, which always bind via
+# asyncpg params. See SECURITY.md "trusted-identifier interpolation".
+"packages/retrieval/woxpas_retrieval/backends/db_direct.py" = ["S608"]
+"packages/api/woxpas_api/engines/conflict.py" = ["S608"]
+"packages/storage/woxpas_storage/postgres/repos/conflicts.py" = ["S608"]
+"packages/storage/woxpas_storage/postgres/repos/documents.py" = ["S608"]
+"packages/resurfacing/woxpas_resurfacing/engine.py" = ["S608"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+disallow_any_generics = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["packages"]

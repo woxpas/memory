@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
+
+# uv
+.uv/
+uv.lock.local
+
+# Go (reserved for future cross-platform components)
+*.exe
+*.dll
+*.dylib
+
+# Models + model/HF caches (downloaded on first run; never committed).
+# Match model weights and any HuggingFace cache dir at ANY depth — stray
+# caches can land inside package dirs (e.g. packages/*/.../models/).
+**/*.gguf
+**/*.onnx
+**/*.bin
+**/*.safetensors
+**/models/
+**/models--*/
+**/.cache/
+CACHEDIR.TAG
+!models/
+!models/.gitkeep
+
+# Local data (encrypted volume)
+data/
+.data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+.secrets/
+vault/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+logs/
+*.log
