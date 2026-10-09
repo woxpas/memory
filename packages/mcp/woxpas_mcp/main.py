@@ -1,7 +1,7 @@
 """woxpas-mcp-server entry point.
 
 Standalone process spawned by an MCP-capable agent (Claude Desktop,
-Cursor, NOYU, etc.). The agent's MCP config block sets the env vars
+Cursor, etc.). The agent's MCP config block sets the env vars
 including WOXPAS_MCP_TENANT_ID; this process inherits them, constructs
 engines, then talks JSON-RPC over stdin/stdout until the parent closes
 the pipe.

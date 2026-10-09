@@ -1,5 +1,5 @@
 """Resurfacing response types — wire-protocol contracts for the
-plug-and-play API any agent (NOYU + 3rd-party MCP) can consume.
+plug-and-play API any agent (any MCP agent) can consume.
 
 The Thinking Brain endpoint (`GET /resurface/context`) returns the
 ThinkingBrainContext snapshot — what's "live in the user's working
@@ -227,20 +227,20 @@ class PatternsResult(BaseModel):
 # ─── Phase 5a.4 — Tool-use pattern engine (observations + preferences) ─────
 
 class ObservationRequest(BaseModel):
-    """Body for POST /resurface/observation. Any agent (NOYU + 3rd-party
+    """Body for POST /resurface/observation. Any agent (any MCP
     MCP) calls this on every interaction so resurfacing builds a
     cross-agent picture of what the user does + what works."""
     model_config = ConfigDict(extra="ignore")
 
     agent_id:    str = Field(min_length=1, max_length=80)
-    """Free-form agent identifier (e.g. 'noyu', 'claude-mcp', 'cursor').
+    """Free-form agent identifier (e.g. 'claude-mcp', 'claude-mcp', 'cursor').
     v0.2: tenant-issued tokens for verified registration."""
     tool_called: str = Field(min_length=1, max_length=120)
     """Which tool was invoked: 'memory.ask', 'memory.recall', etc."""
     skill_id:    str | None = Field(default=None, max_length=80)
-    """Optional. The skill this call is serving — Claude Skills, NOYU
+    """Optional. The skill this call is serving — Claude Skills, an agent
     bundled workflows, GPTs, etc. Null for direct tool calls. Enables
-    cross-agent skill-aware patterns (e.g., 'writing skill in NOYU is
+    cross-agent skill-aware patterns (e.g., 'writing skill in an agent is
     more engaged-with than in Claude'). Phase 5a.4.1."""
     tool_input:  dict[str, Any] | None = None
     """The tool's input — for /ask this is the query_text + flags.
@@ -275,7 +275,7 @@ class UserPreferences(BaseModel):
     surfacing_aggressiveness:    str  = "normal"   # conservative | normal | aggressive
     persona_tone:                dict[str, Any] = Field(default_factory=dict)
     tool_use_preferences:        dict[str, Any] = Field(default_factory=dict)
-    """Per-agent preferences, e.g. {'noyu': {short_answers: True}}."""
+    """Per-agent preferences, e.g. {'claude-mcp': {short_answers: True}}."""
 
     # Phase 5a.4 — derived signals from observations
     most_active_hour:            int | None = None  # 0-23 in user TZ; peak observation hour
@@ -419,7 +419,7 @@ class PreparedActionRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     agent_id:    str = Field(min_length=1, max_length=80)
-    """Which agent is posting (e.g. 'noyu', 'claude-mcp')."""
+    """Which agent is posting (e.g. 'claude-mcp', 'claude-mcp')."""
     action_kind: str = Field(min_length=1, max_length=80)
     """Taxonomy is open — agents agree on shared kinds informally
     (e.g. 'email_response_draft', 'meeting_prep_brief')."""

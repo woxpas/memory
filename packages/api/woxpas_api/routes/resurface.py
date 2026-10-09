@@ -8,7 +8,7 @@ phases:
   5a.5 → MCP server wraps all of the above for any MCP-capable agent
 
 The contract: tenant_id is from auth (never request body); response is
-JSON; surface is plug-and-play across NOYU + 3rd-party agents.
+JSON; surface is plug-and-play across any MCP agents.
 """
 
 from __future__ import annotations
@@ -124,7 +124,7 @@ async def resurface_observation(
     request:   Request,
     tenant_id: Annotated[UUID, Depends(tenant_id_dep)],
 ) -> None:
-    """Record one agent interaction. Plug-and-play — any agent (NOYU
+    """Record one agent interaction. Plug-and-play — any agent (an agent
     or 3rd-party MCP) calls this on every tool use.
 
     The body carries: agent_id, tool_called, tool_input (optional),
@@ -269,7 +269,7 @@ async def resurface_prepared_action_post(
 ) -> PreparedActionPostResponse:
     """Agent posts a composed action back to memory. Memory stores it
     as a prepared_action artifact in 'drafted' state with the supplied
-    expiration. Any agent (NOYU + 3rd-party MCP) can list these and
+    expiration. Any agent (any MCP agent) can list these and
     walk them through the approval state machine."""
     state = _get_state(request)
     try:
@@ -407,7 +407,7 @@ async def resurface_prepared_action_mark_executed(
         ) from e
 
 
-# ─── Phase 5a.5+ — NOYU-supporting writes ──────────────────────────────
+# ─── Phase 5a.5+ — agent-facing writes ──────────────────────────────
 
 
 class UpsertPersonaRequest(BaseModel):

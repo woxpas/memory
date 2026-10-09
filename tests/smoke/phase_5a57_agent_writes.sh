@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 5a.5+ — NOYU-supporting MCP writes: upsert_persona + record_decision.
+# 5a.5+ — agent-facing MCP writes: upsert_persona + record_decision.
 set -euo pipefail
 cd /Users/sid/Documents/woxpas-memory
 set -a; source .env; set +a
@@ -22,7 +22,7 @@ SET app.tenant_id = '$TENANT';
 UPDATE resurface_user_preferences SET persona_tone = '{}'::jsonb
  WHERE tenant_id = '$TENANT';
 DELETE FROM resurface_observations
- WHERE agent_id = 'smoke-noyu-writes';
+ WHERE agent_id = 'smoke-agent-writes';
 " >/dev/null 2>&1 || true
 
 # ─── upsert_persona ─────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ print(pt.get('default', {}).get('slack'))
 note "6. POST /resurface/decision — record agent decision"
 HTTP=$(curl -sS -o /tmp/r.json -w '%{http_code}' -X POST \
   -H "$H_TENANT" -H "Content-Type: application/json" \
-  -d '{"agent_id":"smoke-noyu-writes","decision_kind":"email_response_priority","options":["respond_now","draft_for_later","ignore"],"chosen":"draft_for_later","why":"user is in deep-work mode; this is non-urgent"}' \
+  -d '{"agent_id":"smoke-agent-writes","decision_kind":"email_response_priority","options":["respond_now","draft_for_later","ignore"],"chosen":"draft_for_later","why":"user is in deep-work mode; this is non-urgent"}' \
   "$API/resurface/decision")
 DECISION_ID=$(python3 -c "
 import json
@@ -138,7 +138,7 @@ fi
 note "8. Validation: missing chosen → still records (chosen can be null)"
 HTTP=$(curl -sS -o /tmp/r.json -w '%{http_code}' -X POST \
   -H "$H_TENANT" -H "Content-Type: application/json" \
-  -d '{"agent_id":"smoke-noyu-writes","decision_kind":"test_undecided","options":["a","b"]}' \
+  -d '{"agent_id":"smoke-agent-writes","decision_kind":"test_undecided","options":["a","b"]}' \
   "$API/resurface/decision")
 [ "$HTTP" = "201" ] && ok "decision with null chosen accepted" \
   || bad "expected 201, got $HTTP"
@@ -146,7 +146,7 @@ HTTP=$(curl -sS -o /tmp/r.json -w '%{http_code}' -X POST \
 note "9. Validation: missing decision_kind → 422"
 HTTP=$(curl -sS -o /tmp/r.json -w '%{http_code}' -X POST \
   -H "$H_TENANT" -H "Content-Type: application/json" \
-  -d '{"agent_id":"smoke-noyu-writes","options":["a"]}' \
+  -d '{"agent_id":"smoke-agent-writes","options":["a"]}' \
   "$API/resurface/decision")
 [ "$HTTP" = "422" ] && ok "missing decision_kind → 422" \
   || bad "expected 422, got $HTTP"
@@ -156,7 +156,7 @@ HTTP=$(curl -sS -o /tmp/r.json -w '%{http_code}' -X POST \
 SET app.tenant_id = '$TENANT';
 UPDATE resurface_user_preferences SET persona_tone = '{}'::jsonb
  WHERE tenant_id = '$TENANT';
-DELETE FROM resurface_observations WHERE agent_id = 'smoke-noyu-writes';
+DELETE FROM resurface_observations WHERE agent_id = 'smoke-agent-writes';
 " >/dev/null 2>&1 || true
 
 echo

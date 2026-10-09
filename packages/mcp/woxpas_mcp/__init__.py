@@ -2,7 +2,7 @@
 
 This package wraps the engine layer (in packages/api/woxpas_api/engines/)
 + ResurfaceEngine + RetrievalEngine + SynthesisEngine as MCP tools any
-MCP-capable agent (NOYU, Claude Desktop, Cursor, custom) can consume.
+MCP-capable agent (Claude Desktop, Cursor, custom) can consume.
 
 Architecture (project_phase5a5_mcp_plan.md §3):
   - Stdio transport v0.1; HTTP/SSE adapter in v0.2

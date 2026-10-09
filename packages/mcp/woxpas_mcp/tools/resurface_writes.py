@@ -1,14 +1,14 @@
 """resurface_upsert_persona + resurface_record_decision —
-Phase 5a.5+ NOYU-supporting MCP tools.
+Phase 5a.5+ agent-facing MCP tools.
 
 Both are thin wrappers over engine methods that already exist.
 
-Why these tools matter for NOYU:
-  - upsert_persona: NOYU's style-learning skills (X.1) need a clean
+Why these tools matter:
+  - upsert_persona: an agent's style-learning skills need a clean
     write-path for tone profiles. Tone is BEHAVIORAL (lives in
     resurfacing layer's persona_tone jsonb), not factual (would have
     gone to KG).
-  - record_decision: NOYU's decision-style learning (X.2) records
+  - record_decision: an agent's decision-style learning records
     every choice + later attaches user feedback. Sugar over
     record_observation with a stable context convention so future
     PatternDetector additions can mine it without schema changes.
@@ -45,7 +45,7 @@ class UpsertPersonaInput(BaseModel):
         "Store a behavioral persona/tone preference. Deep-merges into the user's persona profile — existing channels you don't touch stay intact. Read back via resurface_get_preferences."
         "BEHAVIORAL data — observed style/cadence/register per channel "
         "and (optionally) per relationship.\n\n"
-        "Typical NOYU usage:\n"
+        "Typical usage:\n"
         "  - on first connect to email: write {'default':{'email':{...}}}\n"
         "  - on per-relationship learning: write\n"
         "    {'per_relationship':{'<sarah-uuid>':{'email':{...}}}}\n\n"
@@ -87,7 +87,7 @@ class RecordDecisionInput(BaseModel):
     description=(
         "Record a decision the user made with context. This feeds the pattern miner — over time Woxpas learns decision style and surfaces preferences automatically. Follow up with resurface_record_observation referencing the decision_id."
         "layer can mine for X.2 (decision-style learning).\n\n"
-        "Returns {decision_id, observation_id} — both equal. NOYU stores "
+        "Returns {decision_id, observation_id} — both equal. an agent stores "
         "the id; when the user accepts/rejects the resulting action, "
         "follow up with resurface_record_observation pointing back to "
         "the decision_id in context.\n\n"

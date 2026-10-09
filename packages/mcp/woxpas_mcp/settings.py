@@ -12,7 +12,7 @@ class McpSettings(BaseSettings):
     """Configuration for the woxpas-mcp-server process.
 
     The server is a stdio child spawned by an agent (Claude Desktop,
-    Cursor, NOYU, etc.). Tenant identity is bound at startup via env so
+    Cursor, etc.). Tenant identity is bound at startup via env so
     the agent's MCP config block (which carries the env vars) is the
     authority on which tenant this server speaks for.
     """

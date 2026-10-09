@@ -4,7 +4,7 @@ Phase 5a — Thinking Brain (5a.1), Dormant Brain (5a.2), Dreaming (5a.3),
 Tool-Use Patterns (5a.4), MCP server (5a.5).
 
 Memory is the durable substrate. Resurfacing is the cognitive layer that
-sits between memory and any agent (NOYU + 3rd-party MCP). The contract:
+sits between memory and any agent (any MCP agent). The contract:
 resurfacing reads ONLY from memory's view layer (v_*) and never the base
 tables, so memory backend evolution doesn't break this layer (Pillar 4).
 """

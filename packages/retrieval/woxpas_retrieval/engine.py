@@ -176,7 +176,7 @@ class RetrievalEngine:
         # entity / doc / graph nodes.
         await self._bump_non_item_results(tenant_id, result)
 
-        # 5.5 — Phase 4.9: entity-aware enrichment ("kNOw YOu" / NOYU feature).
+        # 5.5 — Phase 4.9: entity-aware enrichment ("know-you" / an agent feature).
         # Detect named entities in the query, pull rich state, walk back to
         # source chunks, merge into items + build situational dossier. Runs
         # before truncation hint so hint sees the enriched item count.
@@ -226,7 +226,7 @@ class RetrievalEngine:
         tenant_id:    UUID,
         entity_names: list[str],
     ) -> tuple[list[ResultItem], str | None]:
-        """Phase 4.9 — entity-aware retrieval enrichment ("kNOw YOu" feature).
+        """Phase 4.9 — entity-aware retrieval enrichment ("know-you" feature).
 
         For each named entity in the query (cap 3), resolves to entity_id
         via fuzzy name match, pulls rich state (profile facts + active

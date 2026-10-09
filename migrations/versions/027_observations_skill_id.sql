@@ -1,6 +1,6 @@
 -- 027 — Phase 5a.4.1: track skill_id on agent observations.
 --
--- Skills (Claude Skills, NOYU bundled workflows, GPTs, Cursor instructions,
+-- Skills (Claude Skills, bundled workflows, GPTs, Cursor instructions,
 -- etc.) are higher-level capabilities that bundle multiple tools with a
 -- procedural recipe. They're a different signal than raw tool_called:
 --

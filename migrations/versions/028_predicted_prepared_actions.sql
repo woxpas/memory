@@ -9,7 +9,7 @@
 --                       rather than duplicate.
 --
 --   prepared_action   — composed action posted BACK to memory by an
---                       agent (NOYU or any 3rd-party MCP) after the agent
+--                       agent (any MCP agent) after the agent
 --                       traversed an external service via its own MCP and
 --                       used memory context to draft something. Memory is
 --                       the shared persistence + approval state across

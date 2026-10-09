@@ -560,7 +560,7 @@ class ResurfaceEngine:
         tenant_id: UUID,
         body:      ObservationRequest,
     ) -> None:
-        """Insert a single observation row. Called by any agent (NOYU
+        """Insert a single observation row. Called by any agent (an agent
         + 3rd-party MCP) on every interaction. Tenant-isolated; cheap
         write (~1ms). PatternDetector reads these later in batched
         passes — agents never wait for analysis."""
@@ -686,7 +686,7 @@ class ResurfaceEngine:
             tenant_id=tenant_id,
         )
 
-    # ─── Phase 5a.5+ — NOYU-supporting writes ──────────────────────────────
+    # ─── Phase 5a.5+ — agent-facing writes ──────────────────────────────
 
     async def upsert_persona(
         self, *, tenant_id: UUID, persona_patch: dict[str, Any],
@@ -701,7 +701,7 @@ class ResurfaceEngine:
         nested dicts get merged recursively. Use NULL value to clear
         a key (e.g., {'email': None} drops the email persona).
 
-        Typical NOYU usage:
+        Typical usage:
           - On first connect to a channel: upsert_persona({
               'default': {'email': {'register': 'professional', ...}}
             })
@@ -752,7 +752,7 @@ class ResurfaceEngine:
         """Record a decision the agent made, with structured fields the
         PatternDetector can later mine for X.2 (decision-style learning).
 
-        Returns {decision_id, observation_id} — both equal. NOYU stores
+        Returns {decision_id, observation_id} — both equal. an agent stores
         the id and can attach user_reaction later via record_observation
         with a context hint pointing back.
 
@@ -765,7 +765,7 @@ class ResurfaceEngine:
                 INSERT INTO resurface_observations
                   (tenant_id, agent_id, tool_called, skill_id,
                    tool_input, outcome, context)
-                VALUES ($1, $2, 'noyu.decide', $3,
+                VALUES ($1, $2, 'agent.decide', $3,
                         $4::jsonb, $5::jsonb, $6::jsonb)
                 RETURNING observation_id
                 """,

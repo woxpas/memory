@@ -227,7 +227,7 @@ class PatternDetector:
         """Peak weekday (0=Monday, 6=Sunday, ISO convention) by
         observation count, in tenant-local time. Returns None for
         low counts (< 10) — too noisy. Foundation for any agent
-        (NOYU later) deriving a weekly schedule pattern from
+        (an agent later) deriving a weekly schedule pattern from
         observed behavior."""
         if len(obs) < 10:
             return None
@@ -248,7 +248,7 @@ class PatternDetector:
         local time. {"9": ["memory.ask", ...], ...}. Hours with
         fewer than 3 observations are dropped (too noisy to trust).
 
-        Foundation for adaptive scheduling: agents (NOYU) read this
+        Foundation for adaptive scheduling: agents (an agent) read this
         to derive WHEN to surface what — e.g. "user uses memory.ask
         most at 9am LOCAL" → pre-prepare 9am-likely answers slightly
         before. Memory does NOT do the scheduling; it surfaces the

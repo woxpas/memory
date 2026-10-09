@@ -28,7 +28,7 @@ extend TTL rather than spam duplicates. When an opportunity resolves
 skips it; the existing artifact ages out via TTL.
 
 Memory has zero domain-specific logic here — there is no "email" or
-"calendar" code in this module. NOYU (or any agent) layers external-
+"calendar" code in this module. an agent (or any agent) layers external-
 service opportunities on top by traversing services via their MCPs and
 posting prepared_action artifacts back through the bridge endpoints.
 
@@ -312,7 +312,7 @@ class OpportunityDetector:
         self, *, tenant_id: UUID, dreaming_run_id: UUID | None,
     ) -> tuple[int, int]:
         """Active ideas not revisited in 30+ days. Suggested actions:
-        revive, abandon, convert-to-task. The revive path is what NOYU
+        revive, abandon, convert-to-task. The revive path is what an agent
         would surface in a daily digest ("you had this idea last month;
         worth a second look?")."""
         async with self._pool.tenant_session(tenant_id) as conn:

@@ -7,7 +7,7 @@ Pillars:
   - Speed: every read is sub-100ms (engine optimized via score_maintainer
     + matview)
   - Sovereign/Adaptable: signals + preferences are tenant-portable —
-    NOYU and 3rd-party MCP agents both consume the same surface
+    MCP agents consume the same surface
 """
 
 from __future__ import annotations

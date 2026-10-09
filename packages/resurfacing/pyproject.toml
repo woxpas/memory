@@ -1,7 +1,7 @@
 [project]
 name = "woxpas-resurfacing"
 version = "0.1.0"
-description = "Woxpas resurfacing — thinking brain, dormant brain, dreaming, tool-use patterns. Plug-and-play for any agent (NOYU + 3rd-party MCP)."
+description = "Woxpas resurfacing — thinking brain, dormant brain, dreaming, tool-use patterns. Plug-and-play for any agent (any MCP agent)."
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
 
