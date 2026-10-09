@@ -84,5 +84,5 @@ surface, bitemporal + RLS data model, envelope encryption at rest, and the
 passphrase → Argon2id KEK → DEK boot daemon. See [README.md](README.md) and
 [SECURITY.md](SECURITY.md).
 
-[Unreleased]: https://github.com/OWNER/woxpas/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/OWNER/woxpas/releases/tag/v0.1.0
+[Unreleased]: https://github.com/woxpas/memory/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/woxpas/memory/releases/tag/v0.1.0
