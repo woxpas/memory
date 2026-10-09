@@ -125,45 +125,53 @@ services:
       retries: 5
       start_period: 120s
 
-  # ── Application services ───────────────────────────────────────────────
-  #
-  # All four app processes run from ONE image (../Dockerfile), differing only
-  # by `command`. They are gated behind the `app` profile so a plain
-  # `docker compose up` brings up only the datastores (what `woxpas-cli up` and
-  # the bootstrap use). The supported happy path runs the app on the host via
-  # `woxpas-cli up`; running it in containers (`docker compose --profile app up`)
-  # is EXPERIMENTAL and still needs, for the API: API_HOST=0.0.0.0 to bind inside
-  # the container AND API_AUTH_MODE=jwt (the dev-auth loopback guard refuses a
-  # non-loopback bind). Tracked as a follow-up; see docs/GETTING_STARTED.md.
-
-  api:
-    profiles: ["app"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: ["woxpas-api"]
-    <<: [*restart, *hardening]
+  # ── Migrations (one-shot) ──────────────────────────────────────────────
+  # Applies pending SQL migrations, then exits. App services wait for it to
+  # finish. Uses the Postgres client image (psql) — no app build needed. Runs
+  # on every `up` and is idempotent (each migration self-registers in
+  # schema_migrations; already-applied versions are skipped).
+  migrate:
+    image: pgvector/pgvector:pg17
+    restart: "no"
     depends_on:
-      postgres: {condition: service_healthy}
-      qdrant: {condition: service_healthy}
-      minio: {condition: service_healthy}
-    env_file:
-      - path: .env
-        required: false
+      postgres:
+        condition: service_healthy
     environment:
-      <<: *app-env
-      # Needed to bind inside the container; pair with API_AUTH_MODE=jwt (see note above).
-      API_HOST: ${WOXPAS_API_CONTAINER_HOST:-0.0.0.0}
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
     volumes:
-      - models:/var/woxpas/models
+      - ./migrations:/migrations:ro
     networks:
       - woxpas-internal
-      - woxpas-public
-    ports:
-      - "127.0.0.1:${API_PORT:-7800}:7800"   # localhost ONLY
-    read_only: true
-    tmpfs:
-      - /tmp:size=64M
+    entrypoint: ["bash", "-lc"]
+    command:
+      - |
+        set -euo pipefail
+        applied=$$(psql -Atqc "SELECT version FROM schema_migrations" 2>/dev/null || true)
+        for f in /migrations/versions/*.sql; do
+          base=$$(basename "$$f" .sql)
+          if printf '%s\n' "$$applied" | grep -qx "$$base"; then continue; fi
+          echo "[migrate] applying $$base"
+          psql -v ON_ERROR_STOP=1 -f "$$f"
+        done
+        echo "[migrate] up to date"
+
+  # ── Application services ───────────────────────────────────────────────
+  #
+  # All app processes run from ONE image (./Dockerfile), differing only by
+  # `command`. Profiles keep a plain `docker compose up` to datastores + the
+  # worker:
+  #   (default)        datastores + migrate
+  #   --profile app    + worker-pipeline + dreaming-worker (portless; the memory
+  #                      engine. This is all the Claude-Desktop/MCP path needs.)
+  #   --profile api    + the HTTP gateway. OFF by default and, in a container,
+  #                      pinned to API_AUTH_MODE=jwt with NO published port — the
+  #                      header-trust dev mode is never exposed on a network
+  #                      interface. (For local curl/testing, run the API on the
+  #                      host via `woxpas-cli up`, where dev mode is loopback-safe.)
+  #   --profile mcp    the stdio MCP server, for `docker compose run --rm mcp`.
 
   worker-pipeline:
     profiles: ["app"]
@@ -177,6 +185,7 @@ services:
       qdrant: {condition: service_healthy}
       minio: {condition: service_healthy}
       clamav: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
     env_file:
       - path: .env
         required: false
@@ -201,6 +210,7 @@ services:
     <<: [*restart, *hardening]
     depends_on:
       postgres: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
     env_file:
       - path: .env
         required: false
@@ -214,6 +224,37 @@ services:
     tmpfs:
       - /tmp:size=64M
     # No ports — background insights loop.
+
+  api:
+    # OFF by default (opt-in `api` profile). In a container we pin jwt auth and
+    # publish NO host port — the dev-auth loopback guard is never bypassed. If
+    # you want the HTTP API on localhost, prefer the host path (`woxpas-cli up`).
+    profiles: ["api"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["woxpas-api"]
+    <<: [*restart, *hardening]
+    depends_on:
+      postgres: {condition: service_healthy}
+      qdrant: {condition: service_healthy}
+      minio: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+      API_HOST: 0.0.0.0           # bind inside the container (reachable only on the internal network)
+      API_AUTH_MODE: jwt          # header-trust dev mode is never used in-container
+    volumes:
+      - models:/var/woxpas/models
+    networks:
+      - woxpas-internal
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M
+    # No ports — internal network only. Front it with a reverse proxy to expose.
 
   mcp:
     # Stdio MCP server, meant for `docker compose run --rm mcp`, not `up`.
@@ -229,6 +270,7 @@ services:
       postgres: {condition: service_healthy}
       qdrant: {condition: service_healthy}
       minio: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
     env_file:
       - path: .env
         required: false

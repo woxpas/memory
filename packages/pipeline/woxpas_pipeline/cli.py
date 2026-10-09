@@ -710,7 +710,6 @@ async def cmd_install_claude_desktop(args: argparse.Namespace) -> int:
     print the block.
     """
     import json as _json
-    from pathlib import Path as Path
 
     env = _read_env(_ENV_PATH)
     tenant_id = env.get("WOXPAS_DEV_TENANT_ID_DEFAULT", "")
@@ -719,14 +718,25 @@ async def cmd_install_claude_desktop(args: argparse.Namespace) -> int:
         print("[woxpas] no tenant found in .env — run `woxpas-cli bootstrap` first.")
         return 1
 
-    block = _mcp_server_block(
-        cwd=str(Path.cwd()),
-        tenant_id=tenant_id,
-        pg_password=env.get("POSTGRES_PASSWORD", ""),
-        qdrant_key=env.get("QDRANT_API_KEY", ""),
-        minio_password=env.get("MINIO_ROOT_PASSWORD", ""),
-        dek_hex=dek_hex,
-    )
+    if args.docker:
+        # Docker mode: Claude Desktop spawns the MCP server in a container via
+        # `docker compose run`. Secrets + tenant flow in from .env through the
+        # compose `mcp` service, so nothing sensitive is written to this config.
+        compose_file = str(Path.cwd() / "docker-compose.yml")
+        block: dict[str, Any] = {
+            "command": "docker",
+            "args": ["compose", "-f", compose_file, "--profile", "mcp",
+                     "run", "--rm", "-T", "mcp"],
+        }
+    else:
+        block = _mcp_server_block(
+            cwd=str(Path.cwd()),
+            tenant_id=tenant_id,
+            pg_password=env.get("POSTGRES_PASSWORD", ""),
+            qdrant_key=env.get("QDRANT_API_KEY", ""),
+            minio_password=env.get("MINIO_ROOT_PASSWORD", ""),
+            dek_hex=dek_hex,
+        )
 
     if args.print:
         print(_json.dumps({"mcpServers": {"woxpas": block}}, indent=2))
@@ -2760,6 +2770,9 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Write to this config file instead of the OS default")
     icd.add_argument("--print", action="store_true",
                      help="Only print the JSON block; don't modify any file")
+    icd.add_argument("--docker", action="store_true",
+                     help="Run the MCP server in a container (docker compose run) "
+                          "instead of on the host via uv — no host Python/uv needed")
     icd.set_defaults(func=cmd_install_claude_desktop)
 
     init = sub.add_parser("init-tenant",

@@ -82,8 +82,8 @@ uv run woxpas-cli bootstrap
 - **Cloud API keys** (Anthropic, OpenAI, DeepSeek, Kimi) — all optional. Leave
   blank for a fully local, sovereign install.
 - **Display name** — your name, used for the self-entity and identity card.
-- **Passphrase** — encrypts your data-encryption key. Can be empty for a quick
-  dev install (DEK is stored in `.env` instead).
+- **Passphrase** — required; encrypts your data-encryption key (Argon2id).
+  You'll re-enter it to unlock after a restart.
 - **Model download confirmation** — shows the 4.2 GB budget and asks before
   pulling bytes.
 
@@ -100,12 +100,35 @@ models, and skips completed steps.
 **Scripted install:** `woxpas-cli bootstrap --display-name "Ada" --yes` skips
 all prompts.
 
-If you prefer to run each step manually (useful for debugging or unusual
-environments), follow the detailed steps below.
+### After bootstrap: two commands and you're live
+
+```bash
+uv run woxpas-cli up                     # start datastores + worker + API + dreaming
+uv run woxpas-cli install-claude-desktop # wire Claude Desktop, then restart it
+```
+
+`up` runs everything in the background (logs in `~/.woxpas/logs/`); stop it with
+`woxpas-cli down`. `install-claude-desktop` merges a `woxpas` entry into Claude
+Desktop's config (backing up any existing file, leaving other servers alone).
+
+**That's the whole happy path: `bootstrap` → `up` → `install-claude-desktop`.**
 
 ---
 
-## 4. Configure `.env` (manual)
+> ## Everything below is reference / advanced
+>
+> If `bootstrap` worked, you don't need sections 4–9 — they're the **manual
+> alternative** to `bootstrap` + `up`, for debugging or unusual environments.
+> Skip to [§12 Connect an MCP agent](#12-connect-an-mcp-agent),
+> [§13 Day-2 operations](#13-day-2-operations), or
+> [§15 Troubleshooting](#15-troubleshooting) as needed.
+
+---
+
+## 4. Manual setup (advanced) — configure `.env` by hand
+
+> Sections 4–9 are the **manual alternative** to `woxpas-cli bootstrap` +
+> `woxpas-cli up`. You only need them if you're not using those commands.
 
 ```bash
 cp .env.example .env
