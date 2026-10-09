@@ -249,7 +249,7 @@ class DbDirectBackend:
         tenant_id: UUID,
         chunk_id:  UUID,
         context_window: int = 1,
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """Tenant-scoped fetch for one chunk plus its prev/next neighbors.
 
         Used by GET /chunks/<chunk_id> to give agents enough surrounding
@@ -304,8 +304,8 @@ class DbDirectBackend:
                     tenant_id, doc_id, target_ords,
                 )
 
-        prev_chunks: list[dict] = []
-        next_chunks: list[dict] = []
+        prev_chunks: list[dict[str, Any]] = []
+        next_chunks: list[dict[str, Any]] = []
         for n in neighbors:
             row = {
                 "chunk_id":    n["chunk_id"],
@@ -960,7 +960,7 @@ def _apply_scope_filter(
 
 
 def _shape_doc_items(
-    rows, cap: int,
+    rows: list[Any], cap: int,
 ) -> tuple[list[ResultItem], str | None, bool]:
     truncated = len(rows) > cap
     rows = rows[:cap]

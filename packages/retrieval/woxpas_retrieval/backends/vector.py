@@ -20,7 +20,7 @@ sensitive docs when the filter excludes them.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import structlog
@@ -161,26 +161,26 @@ class VectorBackend:
     async def _search_chunks(
         self, *, head: str, qvec: list[float],
         qfilter: qm.Filter, limit: int,
-    ) -> list:  # type: ignore[type-arg]
+    ) -> list[Any]:
         """Search chunks by a named dense vector head."""
-        return await self._qdrant._client.search(
+        return cast("list[Any]", await self._qdrant._client.search(
             collection_name="chunks",
             query_vector=qm.NamedVector(name=head, vector=qvec),
             query_filter=qfilter,
             limit=limit,
             with_payload=True,
-        )
+        ))
 
     async def _search_chunks_sparse(
         self, *, qsparse: dict[int, float],
         qfilter: qm.Filter, limit: int,
-    ) -> list:  # type: ignore[type-arg]
+    ) -> list[Any]:
         """Search chunks by sparse (lexical) vector head."""
         indices = list(qsparse.keys())
         values  = [qsparse[k] for k in indices]
         if not indices:
             return []
-        return await self._qdrant._client.search(
+        return cast("list[Any]", await self._qdrant._client.search(
             collection_name="chunks",
             query_vector=qm.NamedSparseVector(
                 name="sparse",
@@ -189,22 +189,22 @@ class VectorBackend:
             query_filter=qfilter,
             limit=limit,
             with_payload=True,
-        )
+        ))
 
     async def _search_summaries(
         self, *, qvec: list[float], qfilter: qm.Filter, limit: int,
-    ) -> list:  # type: ignore[type-arg]
+    ) -> list[Any]:
         """Search summaries by dense head."""
-        return await self._qdrant._client.search(
+        return cast("list[Any]", await self._qdrant._client.search(
             collection_name="summaries",
             query_vector=("dense", qvec),
             query_filter=qfilter,
             limit=limit,
             with_payload=True,
-        )
+        ))
 
     async def _hydrate(
-        self, tenant_id: UUID, fused: list[dict],
+        self, tenant_id: UUID, fused: list[dict[str, Any]],
         filters: Filters,
     ) -> list[ResultItem]:
         """Hydrate matched (doc_id, chunk_id|None) pairs into ResultItem

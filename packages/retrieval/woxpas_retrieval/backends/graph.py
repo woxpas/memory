@@ -144,22 +144,22 @@ class GraphBackend:
                 truncated[level + 1] = dropped
 
             next_frontier: list[UUID] = []
-            for e in new_entities:
-                eid = e["entity_id"]
+            for ent in new_entities:
+                eid = ent["entity_id"]
                 if eid in visited:
                     continue
                 # Track parent: which edge brought us here.
-                parent_id = e.get("via_parent_id")
-                edge_id   = e.get("via_edge_id")
+                parent_id = ent.get("via_parent_id")
+                edge_id   = ent.get("via_edge_id")
                 if parent_id is not None and edge_id is not None:
                     parents[eid] = (parent_id, edge_id)
                 visited.add(eid)
                 next_frontier.append(eid)
                 nodes[eid] = GraphNode(
                     entity_id=eid,
-                    canonical_name=e["canonical_name"],
-                    type=e["type"],
-                    mention_count=e.get("mention_count") or 0,
+                    canonical_name=ent["canonical_name"],
+                    type=ent["type"],
+                    mention_count=ent.get("mention_count") or 0,
                 )
             frontier = next_frontier
 
@@ -578,8 +578,8 @@ def _reconstruct_path(
         cur = parent_node
     edge_ids.reverse()
     node_ids.reverse()
-    confs = [edge_by_id[eid].confidence for eid in edge_ids
-             if eid in edge_by_id and edge_by_id[eid].confidence is not None]
+    confs = [c for eid in edge_ids
+             if eid in edge_by_id and (c := edge_by_id[eid].confidence) is not None]
     total_conf = min(confs) if confs else None
     return GraphPath(
         edge_ids=edge_ids, node_ids=node_ids,
@@ -608,8 +608,8 @@ def _enumerate_shortest_paths(
         if node == source:
             edge_ids = list(reversed(edge_acc))
             node_ids = list(reversed([*node_acc, source]))
-            confs = [edges[eid].confidence for eid in edge_ids
-                     if eid in edges and edges[eid].confidence is not None]
+            confs = [c for eid in edge_ids
+                     if eid in edges and (c := edges[eid].confidence) is not None]
             paths.append(GraphPath(
                 edge_ids=edge_ids,
                 node_ids=node_ids,

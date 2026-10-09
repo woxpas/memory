@@ -45,10 +45,11 @@ from woxpas_retrieval.enrichment import (
     build_truncation_hint,
     bump_mentions,
 )
-from woxpas_retrieval.intent import classify
+from woxpas_retrieval.intent import ExtractedFilters, classify
 from woxpas_retrieval.types import (
     CardMode,
     Filters,
+    GraphView,
     Hint,
     Intent,
     ResultItem,
@@ -59,7 +60,8 @@ from woxpas_retrieval.types import (
 )
 
 if TYPE_CHECKING:
-    from woxpas_runtime import LlmBackend, RerankerBackend
+    from woxpas_runtime import EmbedderBackend, LlmBackend, RerankerBackend
+    from woxpas_storage import PostgresPool, QdrantClient
 
 log = structlog.get_logger(__name__)
 
@@ -100,9 +102,9 @@ class RetrievalEngine:
     def __init__(
         self,
         *,
-        pool,
-        qdrant,
-        embedder,
+        pool:            PostgresPool,
+        qdrant:          QdrantClient,
+        embedder:        EmbedderBackend,
         reranker:        RerankerBackend | None = None,
         intent_llm:      LlmBackend | None      = None,
     ) -> None:
@@ -444,7 +446,7 @@ class RetrievalEngine:
         *,
         tenant_id:      UUID,
         context_window: int = 1,
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """Public wrapper for db_direct.chunk_with_context. Used by the
         GET /chunks/<chunk_id> endpoint to return a chunk with its prev/
         next neighbors. Returns None when not found or cross-tenant —
@@ -486,7 +488,7 @@ class RetrievalEngine:
         shape:                  ResultShape,
         filters:                Filters,
         extracted_entity_names: list[str],
-        metrics:                dict,
+        metrics:                dict[str, Any],
     ) -> RetrievalResult:
         """Route to the right backend and shape the response."""
         # FILE_LOOKUP: if the query is `doc:<uuid>` short-form, go straight.
@@ -531,7 +533,7 @@ class RetrievalEngine:
             detail = await self._db_direct.file_by_id(
                 tenant_id=tenant_id, doc_id=doc_uuid,
             )
-            return self._wrap_detail(request, detail, intent=Intent.FILE_LOOKUP)
+            return _wrap_detail(request, detail, intent=Intent.FILE_LOOKUP)
 
         # 2. Otherwise filename ILIKE — strip cue words from query first
         pattern = _strip_file_cues(request.query_text)
@@ -679,6 +681,7 @@ class RetrievalEngine:
                 ),
             )
 
+        view: GraphView | None
         if len(entity_ids) >= 2:
             view = await self._graph.path_between(
                 tenant_id=tenant_id,
@@ -729,7 +732,7 @@ class RetrievalEngine:
         request:   RetrievalRequest,
         tenant_id: UUID,
         filters:   Filters,
-        metrics:   dict,
+        metrics:   dict[str, Any],
     ) -> RetrievalResult:
         t0 = time.monotonic()
         items, cursor, truncated = await self._vector.search(
@@ -867,7 +870,7 @@ class RetrievalEngine:
 
     @staticmethod
     def _merge_filters(
-        from_request: Filters, from_extracted,
+        from_request: Filters, from_extracted: ExtractedFilters,
     ) -> Filters:
         """Merge classifier-extracted filters into the caller-supplied ones.
         Caller's explicit filters WIN — the agent gets to override the
@@ -954,7 +957,7 @@ def _strip_file_cues(query: str) -> str:
 
 
 def _wrap_detail(
-    request: RetrievalRequest, detail, *, intent: Intent,
+    request: RetrievalRequest, detail: Any, *, intent: Intent,
 ) -> RetrievalResult:
     """Helper used by file_lookup to wrap a (possibly-None) DocumentDetail."""
     if detail is None:
@@ -968,7 +971,3 @@ def _wrap_detail(
         shape=ResultShape.DETAIL,
         detail=detail,
     )
-
-
-# Bind the static helper as a method (Python's bound-method semantics).
-RetrievalEngine._wrap_detail = staticmethod(_wrap_detail)        # type: ignore[attr-defined]

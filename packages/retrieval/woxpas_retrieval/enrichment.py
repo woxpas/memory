@@ -33,7 +33,7 @@ Pillars:
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import structlog
@@ -109,8 +109,8 @@ async def attach_conflict_provenance(
 
     # Single batched query covering both indices on conflicts.
     async with pool.tenant_session(tenant_id) as conn:
-        conflicts_by_relation: dict[UUID, list[dict]] = defaultdict(list)
-        conflicts_by_fact:     dict[UUID, list[dict]] = defaultdict(list)
+        conflicts_by_relation: dict[UUID, list[dict[str, Any]]] = defaultdict(list)
+        conflicts_by_fact:     dict[UUID, list[dict[str, Any]]] = defaultdict(list)
 
         if relation_ids:
             rows = await conn.fetch(
@@ -172,7 +172,7 @@ async def attach_conflict_provenance(
         # Tier 2 — chunk_id transitive: conflicts on relations that were
         # extracted from these specific chunks. relations.chunk_id is set
         # by the extraction stage when available.
-        conflicts_by_chunk: dict[UUID, list[dict]] = defaultdict(list)
+        conflicts_by_chunk: dict[UUID, list[dict[str, Any]]] = defaultdict(list)
         if chunk_ids:
             rows = await conn.fetch(
                 """
@@ -197,7 +197,7 @@ async def attach_conflict_provenance(
         # to the source doc. Surfaces "this chunk's source has open issues"
         # even when the chunk itself didn't yield a directly-conflicting
         # relation.
-        conflicts_by_doc: dict[UUID, list[dict]] = defaultdict(list)
+        conflicts_by_doc: dict[UUID, list[dict[str, Any]]] = defaultdict(list)
         if doc_ids:
             rows = await conn.fetch(
                 """
@@ -223,7 +223,7 @@ async def attach_conflict_provenance(
     for it in items:
         if it.provenance is None:
             continue
-        item_conflicts: list[dict] = []
+        item_conflicts: list[dict[str, Any]] = []
         # Tier 1 — direct relation/fact match
         for rid in it.provenance.relation_ids:
             item_conflicts.extend(conflicts_by_relation.get(rid, []))
@@ -263,8 +263,7 @@ async def attach_conflict_provenance(
             note = c.get("notes")
             new_resolutions.append(ResolutionProvenance(
                 conflict_id    = c["conflict_id"],
-                kind           = kind,                       # type: ignore[arg-type]
-                note           = note,
+                kind           = kind,                note           = note,
                 resolved_state = state,
                 resolved_at    = c.get("resolved_at"),
             ))

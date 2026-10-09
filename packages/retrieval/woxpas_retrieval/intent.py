@@ -175,7 +175,7 @@ _GRAPH_RE = re.compile(
 
 # Map common time-phrase wording to canonical TimeFilter.relative tokens
 # (the resolver in time_resolve.py knows how to parse these).
-_RELATIVE_PHRASE_MAP: list[tuple[re.Pattern, str]] = [
+_RELATIVE_PHRASE_MAP: list[tuple[re.Pattern[str], str]] = [
     # Order matters — specific multi-word phrases checked BEFORE shorter ones
     # to avoid "the day before yesterday" matching plain "yesterday".
     (re.compile(r"\bthe\s+day\s+before\s+yesterday\b", re.I), "last_2_days"),
