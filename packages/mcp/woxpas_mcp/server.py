@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import structlog
@@ -35,6 +35,9 @@ from woxpas_mcp.errors import StructuredError, ToolError
 from woxpas_mcp.middleware import AuditWriter, RateLimiter, emit_latency
 from woxpas_mcp.registry import all_tools, get_tool
 from woxpas_mcp.settings import McpSettings
+
+if TYPE_CHECKING:
+    from woxpas_runtime import LlmBackend
 
 log = structlog.get_logger(__name__)
 
@@ -107,11 +110,11 @@ class WoxpasMcpServer:
             intent_llm=intent_llm,
         )
         verifier = CitationVerifier(embedder)
-        backend_cache: dict[str, Any] = (
+        backend_cache: dict[str, LlmBackend] = (
             {intent_llm.name: intent_llm} if intent_llm else {}
         )
 
-        def llm_factory(name: str | None):
+        def llm_factory(name: str | None) -> LlmBackend:
             if name is None and intent_llm is not None:
                 return intent_llm
             resolved = name or "qwen2.5-3b-instruct-q4km"
@@ -169,7 +172,7 @@ class WoxpasMcpServer:
     def _wire_handlers(self) -> None:
         """Bind list_tools + call_tool handlers to the SDK's Server."""
 
-        @self._mcp.list_tools()
+        @self._mcp.list_tools()  # type: ignore[no-untyped-call, untyped-decorator]  # MCP SDK decorator is untyped
         async def _list_tools() -> list[mcp_types.Tool]:
             tools = []
             for t in all_tools():
@@ -180,10 +183,10 @@ class WoxpasMcpServer:
                 ))
             return tools
 
-        @self._mcp.call_tool()
+        @self._mcp.call_tool()  # type: ignore[untyped-decorator]  # MCP SDK decorator is untyped
         async def _call_tool(
             name: str, arguments: dict[str, Any] | None,
-        ):
+        ) -> list[mcp_types.TextContent]:
             """Hardened call dispatcher.
 
             Order:

@@ -23,7 +23,7 @@ import json
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import asyncpg
 import structlog
@@ -59,7 +59,7 @@ class OutboxRepo:
             event.pipeline_version, event.aggregate_kind, event.aggregate_id,
             event.payload, event.causation_id, event.correlation_id,
         )
-        return row["outbox_id"]
+        return cast("int", row["outbox_id"])
 
 
 class OutboxPublisher:
@@ -232,7 +232,7 @@ def _loads_payload(raw: Any) -> dict[str, Any]:
     if isinstance(raw, dict):
         return raw
     if isinstance(raw, (bytes, bytearray)):
-        return json.loads(raw.decode("utf-8"))
+        return cast("dict[str, Any]", json.loads(raw.decode("utf-8")))
     if isinstance(raw, str):
-        return json.loads(raw)
+        return cast("dict[str, Any]", json.loads(raw))
     return {}

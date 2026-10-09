@@ -20,7 +20,7 @@ from __future__ import annotations
 import inspect
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from pydantic import BaseModel
 
@@ -73,7 +73,9 @@ def tool(
             input_model=input_model,
             handler=fn,
         )
-        return fn
+        # inspect.iscoroutinefunction narrows fn to a bare coroutine-function
+        # type above; re-assert the original _Handler bind for the caller.
+        return cast(_Handler, fn)
     return decorator
 
 

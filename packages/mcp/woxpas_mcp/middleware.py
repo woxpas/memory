@@ -19,7 +19,10 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from woxpas_storage import PostgresPool
 from uuid import UUID
 
 import structlog
@@ -96,7 +99,7 @@ class AuditWriter:
     """
 
     def __init__(
-        self, *, pool, level: str = "full",
+        self, *, pool: PostgresPool, level: str = "full",
         actor: str = "mcp-agent",
     ) -> None:
         self._pool   = pool

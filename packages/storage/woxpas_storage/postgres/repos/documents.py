@@ -8,7 +8,7 @@ WHERE — defense in depth + planner hint for composite indexes.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import asyncpg
@@ -88,7 +88,7 @@ class DocumentRepo:
             valid_time_hint, external_refs,
             sens_value, sens_reason,
         )
-        return row["doc_id"]
+        return cast("UUID", row["doc_id"])
 
     async def update_status(self, tenant_id: UUID, doc_id: UUID, status: DocStatus) -> None:
         await self._conn.execute(

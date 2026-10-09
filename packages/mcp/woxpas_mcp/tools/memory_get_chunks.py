@@ -70,9 +70,9 @@ async def memory_get_chunks(
     if input.context_window > 0:
         for cid in input.chunk_ids:
             ctx_result = await ctx.retrieval.recall_chunk_with_context(
-                tenant_id=ctx.tenant_id,
                 chunk_id=cid,
-                surrounding=input.context_window,
+                tenant_id=ctx.tenant_id,
+                context_window=input.context_window,
             )
             if ctx_result is not None:
                 contexts.append(ctx_result.model_dump(mode="json")

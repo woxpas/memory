@@ -12,8 +12,15 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from starlette.responses import Response
+    from starlette.types import Receive, Scope, Send
+
+# MCP server.run handler: handler(read_stream, write_stream) -> awaitable.
+_McpHandler = Callable[[Any, Any], Awaitable[Any]]
 
 
 class Transport(ABC):
@@ -101,7 +108,7 @@ class HttpTransport(Transport):
         else:
             await self._serve_sse(handler)
 
-    async def _serve_streamable(self, handler) -> None:
+    async def _serve_streamable(self, handler: _McpHandler) -> None:
         import asyncio as _asyncio
 
         import uvicorn
@@ -122,15 +129,15 @@ class HttpTransport(Transport):
         # The handler (server.run) processes incoming messages from the
         # transport and sends responses back. This task runs for the
         # lifetime of the server.
-        async def _run_handler():
+        async def _run_handler() -> None:
             async with transport.connect() as (read_stream, write_stream):
                 await handler(read_stream, write_stream)
 
         handler_task = _asyncio.create_task(_run_handler())
 
-        async def asgi_app(scope, receive, send):
+        async def asgi_app(scope: Scope, receive: Receive, send: Send) -> None:
             if scope["type"] != "http":
-                response = PlainTextResponse("Not found", status_code=404)
+                response: Response = PlainTextResponse("Not found", status_code=404)
                 await response(scope, receive, send)
                 return
 
@@ -176,7 +183,7 @@ class HttpTransport(Transport):
                 except (_asyncio.CancelledError, Exception):  # noqa: S110  # best-effort await of a cancelled handler task during teardown
                     pass
 
-    async def _serve_sse(self, handler) -> None:
+    async def _serve_sse(self, handler: _McpHandler) -> None:
         import uvicorn
         from mcp.server.sse import SseServerTransport
         from starlette.responses import JSONResponse, PlainTextResponse
@@ -185,9 +192,9 @@ class HttpTransport(Transport):
         host = self._host
         port = self._port
 
-        async def asgi_app(scope, receive, send):
+        async def asgi_app(scope: Scope, receive: Receive, send: Send) -> None:
             if scope["type"] != "http":
-                response = PlainTextResponse("Not found", status_code=404)
+                response: Response = PlainTextResponse("Not found", status_code=404)
                 await response(scope, receive, send)
                 return
 
@@ -214,7 +221,7 @@ class HttpTransport(Transport):
         server = uvicorn.Server(config)
         await server.serve()
 
-    async def _resolve_tenant(self, scope) -> str:
+    async def _resolve_tenant(self, scope: Scope) -> str:
         """Resolve tenant_id from auth mode. Returns tenant_id string."""
         if self._auth_mode == "jwt":
             headers = dict(scope.get("headers", []))
@@ -236,7 +243,7 @@ class HttpTransport(Transport):
             tenant_id = claims.get("sub", "")
             if not tenant_id:
                 raise _AuthError("token missing sub claim", 401)
-            return tenant_id
+            return str(tenant_id)
         return self._default_tenant_id
 
 

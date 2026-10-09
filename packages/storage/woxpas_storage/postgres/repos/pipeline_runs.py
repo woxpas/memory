@@ -6,7 +6,7 @@ Always called within a transaction with the rest of the stage's writes.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import asyncpg
@@ -30,7 +30,7 @@ class PipelineRunRepo:
             """,
             tenant_id, doc_id, stage, pipeline_version, attempt,
         )
-        return row["run_id"]
+        return cast("UUID", row["run_id"])
 
     async def succeed(
         self, run_id: UUID, metrics: dict[str, Any] | None = None,

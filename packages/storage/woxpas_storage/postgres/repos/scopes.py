@@ -7,8 +7,9 @@ the actual semantic match is delegated to QdrantClient.search_scopes().
 
 from __future__ import annotations
 
+import builtins
 import re
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import asyncpg
@@ -50,7 +51,7 @@ class ScopeRepo:
             tenant_id, name, slug or _slugify(name), description,
             parent_scope_id, color, icon,
         )
-        return row["scope_id"]
+        return cast("UUID", row["scope_id"])
 
     async def by_slug(self, tenant_id: UUID, slug: str) -> dict[str, Any] | None:
         row = await self._conn.fetchrow(
@@ -82,7 +83,7 @@ class ScopeRepo:
 
     async def fuzzy_match(
         self, tenant_id: UUID, query: str, limit: int = 8,
-    ) -> list[dict[str, Any]]:
+    ) -> builtins.list[dict[str, Any]]:  # `list` is shadowed by the .list() method in this class
         """Trigram-fuzzy match on name + description. Used by scope-suggest as a
         cheap pre-filter before the Qdrant semantic step."""
         rows = await self._conn.fetch(

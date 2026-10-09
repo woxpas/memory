@@ -62,7 +62,7 @@ class ObjectStore:
 
     # ─── lifecycle ────────────────────────────────────────────────────────
 
-    def _client_ctx(self):                                   # type: ignore[no-untyped-def]
+    def _client_ctx(self) -> Any:
         return self._session.client(
             "s3",
             endpoint_url=self._settings.endpoint_url,

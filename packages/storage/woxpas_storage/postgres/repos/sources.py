@@ -9,7 +9,7 @@ caller's responsibility.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import asyncpg
@@ -38,7 +38,7 @@ class SourceRepo:
             """,
             tenant_id, type_, name, description, config or {},
         )
-        return row["source_id"]
+        return cast("UUID", row["source_id"])
 
     async def get(self, tenant_id: UUID, source_id: UUID) -> dict[str, Any] | None:
         row = await self._conn.fetchrow(

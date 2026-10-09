@@ -72,6 +72,9 @@ strict = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 disallow_any_generics = true
+# Teaches mypy that pydantic BaseModel/BaseSettings fields populated from env or
+# with defaults are not required positional constructor args.
+plugins = ["pydantic.mypy"]
 
 # Third-party packages that ship no type stubs / py.typed marker. We can't
 # annotate someone else's library, so treat their imports as untyped rather

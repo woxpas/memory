@@ -18,6 +18,7 @@ Bootstrap is idempotent: re-running creates only what's missing.
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Any
 
 import structlog
 from qdrant_client.async_qdrant_client import AsyncQdrantClient
@@ -101,7 +102,7 @@ ENTITIES_VECTORS = {
 # ─── Payload schema (drives indexed payload fields for filter pushdown) ────
 
 # Each entry: (field_name, field_schema)
-PAYLOAD_INDEXES: dict[str, list[tuple[str, qm.PayloadSchemaType]]] = {
+PAYLOAD_INDEXES: dict[Collection, list[tuple[str, qm.PayloadSchemaType]]] = {
     Collection.CHUNKS: [
         ("tenant_id",          qm.PayloadSchemaType.KEYWORD),
         ("doc_id",             qm.PayloadSchemaType.KEYWORD),
@@ -139,11 +140,13 @@ async def bootstrap(client: AsyncQdrantClient) -> dict[str, str]:
     actions: dict[str, str] = {}
     existing = {c.name for c in (await client.get_collections()).collections}
 
-    async def _create(name: str, vectors: dict, sparse: dict | None = None) -> None:
+    async def _create(
+        name: str, vectors: dict[str, Any], sparse: dict[str, Any] | None = None,
+    ) -> None:
         if name in existing:
             actions[name] = "exists"
             return
-        kwargs: dict = dict(
+        kwargs: dict[str, Any] = dict(
             collection_name=name,
             vectors_config=vectors,
             optimizers_config=_common_optimizers(),

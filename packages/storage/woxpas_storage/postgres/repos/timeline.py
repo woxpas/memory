@@ -11,7 +11,7 @@ Reads are out of scope for ingestion (surfacing pipeline owns those).
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import asyncpg
@@ -59,7 +59,7 @@ class TimelineRepo:
             entity_id, idea_id, task_id, scope_id, conflict_id,
             actor, payload,
         )
-        return row["event_id"]
+        return cast("int", row["event_id"])
 
     async def bulk_record(self, events: list[dict[str, Any]]) -> int:
         """Each dict has the same keys as record() arguments."""

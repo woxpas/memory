@@ -63,6 +63,8 @@ async def _amain() -> int:
     # Select transport. stdio = local agents (Claude Desktop, Cursor).
     # http = remote agents (Claude Mobile, web clients) behind a reverse
     # proxy that terminates TLS. Auth is the proxy's responsibility.
+    from woxpas_mcp.adapters import Transport
+    transport: Transport
     if settings.transport == "http":
         from woxpas_mcp.adapters import HttpTransport
         transport = HttpTransport(

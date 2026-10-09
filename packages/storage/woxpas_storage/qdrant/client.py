@@ -13,7 +13,7 @@ This module only writes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import structlog
@@ -85,7 +85,7 @@ class QdrantClient:
             grpc_port=settings.grpc_port,
             api_key=settings.api_key.get_secret_value() or None,
             prefer_grpc=settings.prefer_grpc,
-            timeout=settings.timeout_s,
+            timeout=int(settings.timeout_s),
             https=False,
         )
         log.info("qdrant.client.connected", host=settings.host, grpc=settings.prefer_grpc)
@@ -278,7 +278,7 @@ class QdrantClient:
         if our_vec is None:
             return []
 
-        must_not: list[qm.FieldCondition] = []
+        must_not: list[qm.Condition] = []
         if exclude_doc_id is not None:
             must_not.append(qm.FieldCondition(
                 key="doc_id", match=qm.MatchValue(value=str(exclude_doc_id))))
@@ -291,7 +291,9 @@ class QdrantClient:
 
         results = await self._client.search(
             collection_name=Collection.SUMMARIES.value,
-            query_vector=qm.NamedVector(name=Vec.DENSE.value, vector=list(our_vec)),
+            query_vector=qm.NamedVector(
+                name=Vec.DENSE.value, vector=cast("list[float]", our_vec),
+            ),
             query_filter=flt,
             limit=limit + 1,                     # +1 in case self comes back
             with_payload=True,

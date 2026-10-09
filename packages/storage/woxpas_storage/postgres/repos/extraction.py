@@ -8,7 +8,7 @@ via separate methods on these same repos.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import asyncpg
@@ -44,7 +44,7 @@ class EntityRepo:
             tenant_id, canonical_name, entity_type,
         )
         if existing is not None:
-            return existing
+            return cast("UUID", existing)
         row = await self._conn.fetchrow(
             """
             INSERT INTO entities (
@@ -58,7 +58,7 @@ class EntityRepo:
             """,
             tenant_id, canonical_name, entity_type, first_mentioned_at,
         )
-        return row["entity_id"]
+        return cast("UUID", row["entity_id"])
 
     async def bump_mention(
         self,
@@ -255,7 +255,7 @@ class IdeaRepo:
             confidence, extractor, extractor_version,
             originated_at,
         )
-        return row["idea_id"]
+        return cast("UUID", row["idea_id"])
 
 
 class TaskRepo:
@@ -305,7 +305,7 @@ class TaskRepo:
             owner_entity_id, related_entity_ids,
             confidence, extractor, extractor_version, created_by,
         )
-        return row["task_id"]
+        return cast("UUID", row["task_id"])
 
 
 class RelationRepo:
@@ -365,4 +365,4 @@ class RelationRepo:
             object_entity_id, object_value, doc_id,
             confidence, extractor, extractor_version, claim_text,
         )
-        return row["relation_id"]
+        return cast("UUID", row["relation_id"])
