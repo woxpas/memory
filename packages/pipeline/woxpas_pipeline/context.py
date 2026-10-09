@@ -15,10 +15,19 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import structlog
+
+if TYPE_CHECKING:
+    from woxpas_runtime import (
+        EmbedderBackend,
+        LlamaSummarizer,
+        LlmBackend,
+        RerankerBackend,
+        WhisperAsr,
+    )
 from woxpas_storage import (
     ObjectStore,
     OutboxPublisher,
@@ -51,16 +60,16 @@ class PipelineContext:
     _dek_lock:  asyncio.Lock
     # Lazy-loaded ML runtimes. Constructed on first .embedder / .summarizer access
     # so worker startup stays fast even before the first ingest.
-    _embedder:    Any | None = None
-    _summarizer:  Any | None = None
-    _asr:         Any | None = None
-    _reranker:    Any | None = None
+    _embedder:    EmbedderBackend | None = None
+    _summarizer:  LlamaSummarizer | None = None
+    _asr:         WhisperAsr | None = None
+    _reranker:    RerankerBackend | None = None
     # Per-role LLM backend cache. Keys: 'summary', 'extraction'.
     # A single PipelineContext can run several roles against different models.
     # Two roles pointing at the same model name share the SAME backend instance
     # (deduped via _llm_by_name) so the GGUF only loads into memory once.
-    _llm_by_role: dict[str, Any] | None = None
-    _llm_by_name: dict[str, Any] | None = None
+    _llm_by_role: dict[str, LlmBackend] | None = None
+    _llm_by_name: dict[str, LlmBackend] | None = None
     _runtime_lock: asyncio.Lock | None = None
     enable_runtime: bool = True
 
@@ -159,7 +168,7 @@ class PipelineContext:
 
     # ─── ML runtimes (lazy) ────────────────────────────────────────────────
 
-    async def embedder(self):  # type: ignore[no-untyped-def]
+    async def embedder(self) -> EmbedderBackend:
         """Returns an EmbedderBackend resolved via the catalog. Lazy-loaded.
 
         Backend is whatever PipelineSettings.embed_model_name resolves to;
@@ -180,7 +189,7 @@ class PipelineContext:
                 )
         return self._embedder
 
-    async def summarizer(self):  # type: ignore[no-untyped-def]
+    async def summarizer(self) -> LlamaSummarizer:
         if not self.enable_runtime:
             raise RuntimeError("runtime disabled on this context")
         if self._summarizer is not None:
@@ -195,7 +204,7 @@ class PipelineContext:
                 )
         return self._summarizer
 
-    async def llm_backend(self, role: str = "summary"):  # type: ignore[no-untyped-def]
+    async def llm_backend(self, role: str = "summary") -> LlmBackend:
         """Return an LlmBackend for a logical role. Lazy-loaded, cached.
 
         Roles map to settings fields (summary → summary_model_name, etc.).
@@ -246,7 +255,7 @@ class PipelineContext:
         # model — the closest sensible default for any chat-completion role.
         return explicit if explicit is not None else ps.summary_model_name
 
-    async def asr(self):  # type: ignore[no-untyped-def]
+    async def asr(self) -> WhisperAsr:
         if not self.enable_runtime:
             raise RuntimeError("runtime disabled on this context")
         if self._asr is not None:
@@ -258,7 +267,7 @@ class PipelineContext:
                 self._asr = WhisperAsr(model_name=self.pipeline.asr_model_name)
         return self._asr
 
-    async def reranker(self):  # type: ignore[no-untyped-def]
+    async def reranker(self) -> RerankerBackend:
         """Returns a RerankerBackend for retrieval. Lazy-loaded.
 
         Default: bge-reranker-base-onnx (multilingual, MIT-derived). Swap

@@ -432,19 +432,23 @@ def estimate_download_bytes(artefact: ModelArtefact) -> int:
                     model=artefact.model_version, error=str(e))
         return 0
 
+    # siblings is present on ModelInfo/DatasetInfo/SpaceInfo (and may be None);
+    # getattr keeps the broad repo_info() union from leaking type errors here.
+    siblings = getattr(info, "siblings", None) or []
+
     if artefact.file:
-        for sib in info.siblings:
+        for sib in siblings:
             if sib.rfilename == artefact.file:
                 return sib.size or 0
         return 0
 
     patterns = _allow_patterns_for(artefact)
     if patterns is None:
-        return sum(sib.size or 0 for sib in info.siblings)
+        return sum(sib.size or 0 for sib in siblings)
 
     import fnmatch
     total = 0
-    for sib in info.siblings:
+    for sib in siblings:
         for pat in patterns:
             if fnmatch.fnmatch(sib.rfilename, pat):
                 total += sib.size or 0
@@ -482,6 +486,10 @@ def fetch(artefact: ModelArtefact) -> Path:
     For snapshot artefacts → snapshot_download with allow_patterns derived
     from the artefact so we don't pull unused quantization variants.
     """
+    if artefact.repo is None:
+        raise ValueError(
+            f"artefact {artefact.model_version!r} has no repo to fetch from"
+        )
     cache = _models_root()
     cache.mkdir(parents=True, exist_ok=True)
     log.info("runtime.model.fetch_begin", model=artefact.model_version, cache=str(cache))

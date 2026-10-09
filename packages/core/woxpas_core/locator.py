@@ -65,4 +65,4 @@ SourceLocator = Annotated[
 
 def locator_kind(loc: SourceLocator) -> str:
     """Return the discriminator string of a locator (for logs / SQL queries)."""
-    return loc.kind  # type: ignore[union-attr]
+    return loc.kind

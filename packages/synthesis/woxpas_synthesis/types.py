@@ -22,7 +22,7 @@ engine pure and the event encoder small.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from woxpas_runtime import TokenUsage
@@ -180,7 +180,7 @@ class VerifyEvent:
     Updates a citation's status, cosine, and reason. The client UI
     re-renders citation markers based on this."""
     kind: Literal["verify"] = "verify"
-    citation_updates: dict[int, dict] = field(default_factory=dict)
+    citation_updates: dict[int, dict[str, Any]] = field(default_factory=dict)
     """citation_id → {status, cosine, reason}"""
 
 

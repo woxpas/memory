@@ -61,7 +61,7 @@ from woxpas_synthesis import (
 )
 
 from woxpas_api.auth import tenant_id_dep
-from woxpas_api.state import AppState
+from woxpas_api.state import AppState, app_state
 
 log = structlog.get_logger(__name__)
 
@@ -138,7 +138,7 @@ class SynthesisBody(BaseModel):
 # ─── Routes ────────────────────────────────────────────────────────────────
 
 def _get_state(request: Request) -> AppState:
-    return request.app.state.app
+    return app_state(request)
 
 
 @router.post("/ask")
@@ -194,7 +194,7 @@ def _stream_synthesis(
 
 
 async def _sse_generator(
-    state, engine_req: SynthesisRequest, tenant_id: UUID, request: Request,
+    state: AppState, engine_req: SynthesisRequest, tenant_id: UUID, request: Request,
 ) -> AsyncIterator[bytes]:
     """Bridge SynthesisEvent stream → SSE wire format with disconnect
     detection + keepalive.
@@ -208,9 +208,8 @@ async def _sse_generator(
     request_id = str(engine_req.request_id)
     t_start = time.monotonic()
 
-    queue: asyncio.Queue = asyncio.Queue(maxsize=64)
-    _DONE = object()
-    _ERROR = object()
+    # Items are (tag, payload): ("event", SynthesisEvent) | ("error", Exception) | ("done", None).
+    queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue(maxsize=64)
 
     async def _producer() -> None:
         try:
@@ -330,7 +329,7 @@ def _to_jsonable(value: Any) -> Any:
         return [_to_jsonable(v) for v in value]
     if isinstance(value, dict):
         return {str(k): _to_jsonable(v) for k, v in value.items()}
-    if is_dataclass(value):
+    if is_dataclass(value) and not isinstance(value, type):
         return {k: _to_jsonable(v) for k, v in asdict(value).items()}
     # Fallback — Pydantic models, SQLAlchemy rows, etc.
     if hasattr(value, "model_dump"):

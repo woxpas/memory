@@ -33,9 +33,13 @@ from __future__ import annotations
 import re
 import time
 from collections.abc import AsyncIterator, Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 import structlog
+
+if TYPE_CHECKING:
+    from woxpas_storage import PostgresPool
 
 # CloudPolicyDenied is the only exception we WANT to surface as an
 # ErrorEvent without retry guidance — re-import for isinstance check.
@@ -84,7 +88,7 @@ class SynthesisEngine:
         *,
         retrieval:   RetrievalEngine,
         llm_factory: LlmFactory,
-        pool,                              # type: ignore[no-untyped-def]
+        pool:        PostgresPool,
         verifier:    CitationVerifier | None = None,
     ) -> None:
         self._retrieval   = retrieval
@@ -577,9 +581,12 @@ def _add_usage(a: TokenUsage, b: TokenUsage) -> TokenUsage:
 
 
 async def _audit_safely(
-    pool,                                      # type: ignore[no-untyped-def]
+    pool: PostgresPool,
     *,
-    tenant_id, sources, backend, usage,
+    tenant_id: UUID,
+    sources: list[CitationSource],
+    backend: LlmBackend,
+    usage: TokenUsage | None,
     outcome: str, error_reason: str | None = None,
 ) -> None:
     """Wrap audit_synthesis_cloud_egress so a DB-side audit failure can't
@@ -619,7 +626,7 @@ def _is_retriable(e: BaseException) -> bool:
     # httpx 5xx
     if name == "HTTPStatusError":
         try:
-            return 500 <= e.response.status_code < 600       # type: ignore[attr-defined]
+            return bool(500 <= e.response.status_code < 600)  # type: ignore[attr-defined]
         except AttributeError:
             return False
     return False

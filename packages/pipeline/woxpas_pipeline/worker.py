@@ -51,8 +51,8 @@ def _configure_logging() -> None:
     # under asyncio.gather flush promptly when the output is piped (tee, docker logs).
     # Without this, block-buffering can stall log lines for seconds at a time.
     try:
-        sys.stdout.reconfigure(line_buffering=True)             # type: ignore[attr-defined]
-        sys.stderr.reconfigure(line_buffering=True)             # type: ignore[attr-defined]
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
     except (AttributeError, ValueError):
         pass
 

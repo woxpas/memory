@@ -135,7 +135,7 @@ class ExtractStage:
             # Audio extractor needs runtime model access → uses async path that takes ctx.
             # Other extractors are pure functions, run them in a worker thread.
             if hasattr(extractor, "extract_async"):
-                result = await extractor.extract_async(inp, self._ctx)   # type: ignore[attr-defined]
+                result = await extractor.extract_async(inp, self._ctx)
             else:
                 result = await asyncio.to_thread(extractor.extract, inp)
             result: ExtractResult                                        # type: ignore[no-redef]

@@ -37,7 +37,7 @@ from woxpas_pipeline.ingress import DuplicateDocument
 from woxpas_storage import SourceRepo
 
 from woxpas_api.auth import tenant_id_dep
-from woxpas_api.state import AppState
+from woxpas_api.state import AppState, app_state
 
 log = structlog.get_logger(__name__)
 
@@ -45,7 +45,7 @@ router = APIRouter(tags=["ingest"])
 
 
 def _get_state(request: Request) -> AppState:
-    return request.app.state.app
+    return app_state(request)
 
 
 @router.post("/ingest/file", status_code=status.HTTP_202_ACCEPTED)

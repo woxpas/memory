@@ -62,7 +62,8 @@ def _mean_pool(last_hidden: np.ndarray, attention_mask: np.ndarray) -> np.ndarra
     mask = attention_mask.astype(np.float32)[..., np.newaxis]   # [B, T, 1]
     summed = (last_hidden * mask).sum(axis=1)                   # [B, H]
     counts = np.clip(mask.sum(axis=1), a_min=1.0, a_max=None)   # [B, 1]
-    return summed / counts
+    pooled: np.ndarray = summed / counts
+    return pooled
 
 
 class BgeM3Embedder:
@@ -78,7 +79,7 @@ class BgeM3Embedder:
     def __init__(
         self,
         *,
-        artefact: ModelArtefact | None = None,    # type: ignore[name-defined]
+        artefact: ModelArtefact | None = None,
         hw: HardwareInfo | None = None,
     ) -> None:
         self._hw = hw or probe()
@@ -176,6 +177,10 @@ class BgeM3Embedder:
         has_colbert = self._has_colbert
 
         def _run() -> tuple[list[list[float]], list[dict[int, float]], list[list[list[float]]]]:
+            # Re-assert inside the closure — mypy doesn't carry the outer
+            # narrowing across the nested-function boundary.
+            assert self._tokenizer is not None
+            assert self._session is not None
             dense_out:   list[list[float]]       = []
             sparse_out:  list[dict[int, float]]  = []
             colbert_out: list[list[list[float]]] = []

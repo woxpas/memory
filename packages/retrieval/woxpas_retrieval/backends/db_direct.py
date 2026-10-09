@@ -960,7 +960,7 @@ def _apply_scope_filter(
 
 
 def _shape_doc_items(
-    rows, cap: int,                              # type: ignore[no-untyped-def]
+    rows, cap: int,
 ) -> tuple[list[ResultItem], str | None, bool]:
     truncated = len(rows) > cap
     rows = rows[:cap]

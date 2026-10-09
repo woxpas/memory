@@ -20,9 +20,13 @@ from __future__ import annotations
 import inspect
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
+
+# Identity-preserving bound so `@tool(...)` keeps the handler's own type
+# (otherwise every decorated handler is seen as untyped).
+_Handler = TypeVar("_Handler", bound=Callable[..., Awaitable[Any]])
 
 
 @dataclass(slots=True)
@@ -42,7 +46,7 @@ def tool(
     *,
     description: str,
     input_model: type[BaseModel],
-):
+) -> Callable[[_Handler], _Handler]:
     """Decorator that registers an async handler.
 
     Usage:
@@ -58,7 +62,7 @@ def tool(
         async def memory_recall(*, ctx: ToolContext, input: RecallInput):
             ...
     """
-    def decorator(fn: Callable[..., Awaitable[Any]]):
+    def decorator(fn: _Handler) -> _Handler:
         if name in _REGISTRY:
             raise RuntimeError(f"tool already registered: {name!r}")
         if not inspect.iscoroutinefunction(fn):

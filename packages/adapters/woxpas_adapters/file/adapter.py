@@ -30,7 +30,7 @@ log = structlog.get_logger(__name__)
 class FileAdapter(Adapter):
     source_type = "file_upload"
 
-    async def build_envelope(
+    async def build_envelope(  # type: ignore[override]  # base takes **kwargs by design; each adapter declares its own typed envelope args (see Adapter.build_envelope docstring)
         self,
         *,
         tenant_id: UUID,

@@ -7,7 +7,9 @@ reach the storage clients + ingress stage without re-wiring per request.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
+from fastapi import Request
 from woxpas_adapters import FileAdapter
 from woxpas_pipeline import IngressStage, PipelineContext
 from woxpas_resurfacing import ResurfaceEngine
@@ -67,11 +69,11 @@ class AppState:
         # would be 10s of cold start). Cloud backends are cheap to
         # construct but caching is uniform anyway.
         verifier = CitationVerifier(embedder)
-        backend_cache: dict[str, LlmBackend] = (   # type: ignore[name-defined]
+        backend_cache: dict[str, LlmBackend] = (
             {intent_llm.name: intent_llm} if intent_llm else {}
         )
 
-        def llm_factory(name: str | None):
+        def llm_factory(name: str | None) -> LlmBackend:
             if name is None and intent_llm is not None:
                 return intent_llm
             resolved = name or "qwen2.5-3b-instruct-q4km"
@@ -122,3 +124,12 @@ class AppState:
 
     async def close(self) -> None:
         await self.ctx.close()
+
+
+def app_state(request: Request) -> AppState:
+    """Typed accessor for the AppState stashed on app.state at startup.
+
+    Starlette types `request.app.state` as `Any`, so this re-asserts the
+    concrete type in one place instead of leaking `Any` into every route.
+    """
+    return cast(AppState, request.app.state.app)

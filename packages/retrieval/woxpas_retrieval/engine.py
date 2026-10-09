@@ -100,9 +100,9 @@ class RetrievalEngine:
     def __init__(
         self,
         *,
-        pool,                                                # type: ignore[no-untyped-def]
-        qdrant,                                              # type: ignore[no-untyped-def]
-        embedder,                                            # type: ignore[no-untyped-def]
+        pool,
+        qdrant,
+        embedder,
         reranker:        RerankerBackend | None = None,
         intent_llm:      LlmBackend | None      = None,
     ) -> None:
@@ -867,7 +867,7 @@ class RetrievalEngine:
 
     @staticmethod
     def _merge_filters(
-        from_request: Filters, from_extracted,        # type: ignore[no-untyped-def]
+        from_request: Filters, from_extracted,
     ) -> Filters:
         """Merge classifier-extracted filters into the caller-supplied ones.
         Caller's explicit filters WIN — the agent gets to override the
@@ -955,7 +955,7 @@ def _strip_file_cues(query: str) -> str:
 
 def _wrap_detail(
     request: RetrievalRequest, detail, *, intent: Intent,
-) -> RetrievalResult:                                            # type: ignore[no-untyped-def]
+) -> RetrievalResult:
     """Helper used by file_lookup to wrap a (possibly-None) DocumentDetail."""
     if detail is None:
         return RetrievalResult(

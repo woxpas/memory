@@ -262,7 +262,7 @@ class ExtractFactsStage:
     async def _extract_chunk(
         self,
         *,
-        backend,                            # type: ignore[no-untyped-def]
+        backend,
         chunk_text:         str,
         processing_profile: str,
         sensitivity_class:  str,

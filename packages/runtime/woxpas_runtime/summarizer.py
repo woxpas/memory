@@ -15,8 +15,12 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 import structlog
+
+if TYPE_CHECKING:
+    from llama_cpp import Llama
 
 from woxpas_runtime.hwprobe import Backend, HardwareInfo, probe
 from woxpas_runtime.models import (
@@ -98,7 +102,7 @@ class LlamaSummarizer:
             self._artefact = resolve_model(model_name or DEFAULT_SUMMARY_MODEL_NAME)
         self._hw = hw or probe()
         self._n_ctx = n_ctx
-        self._llm = None
+        self._llm: Llama | None = None
         self._lock = asyncio.Lock()
 
     @property
@@ -138,14 +142,15 @@ class LlamaSummarizer:
             # generation. Acceptable for v0.1; cleaner separation (LLM in a
             # subprocess) is a v0.2 task.
             self._llm = await asyncio.to_thread(
-                Llama,
-                model_path=str(path),
-                n_ctx=self._n_ctx,
-                n_threads=self._hw.threads,
-                n_gpu_layers=n_gpu_layers,
-                logits_all=False,
-                verbose=True,
-                seed=0,
+                lambda: Llama(
+                    model_path=str(path),
+                    n_ctx=self._n_ctx,
+                    n_threads=self._hw.threads,
+                    n_gpu_layers=n_gpu_layers,
+                    logits_all=False,
+                    verbose=True,
+                    seed=0,
+                )
             )
             log.info("summarizer.loaded", model=self.model_version)
 
@@ -159,14 +164,16 @@ class LlamaSummarizer:
 
         def _run() -> str:
             assert self._llm is not None
-            out = self._llm(
+            # Non-streaming call → a completion response dict; llama-cpp types
+            # it as a response|iterator union, so treat as Any and index.
+            out: Any = self._llm(
                 prompt=prompt,
                 max_tokens=max_tokens,
                 temperature=0.0,
                 top_p=1.0,
                 stop=["<|im_end|>"],
             )
-            return out["choices"][0]["text"]
+            return str(out["choices"][0]["text"])
 
         raw = await asyncio.to_thread(_run)
         return self._parse(raw, model_version=self.model_version)

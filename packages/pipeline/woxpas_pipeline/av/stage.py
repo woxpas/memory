@@ -150,7 +150,7 @@ class AvStage:
 
     async def _record_failure(
         self, tenant_id, doc_id, run_id, error_class, message, retriable, causation_id,
-    ):  # type: ignore[no-untyped-def]
+    ):
         async with self._ctx.pool.tenant_session(tenant_id) as conn:
             run_repo = PipelineRunRepo(conn)
             outbox   = OutboxRepo(conn)

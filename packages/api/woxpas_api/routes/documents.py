@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from woxpas_api.auth import tenant_id_dep
-from woxpas_api.state import AppState
+from woxpas_api.state import AppState, app_state
 
 log = structlog.get_logger(__name__)
 
@@ -29,7 +29,7 @@ router = APIRouter(tags=["documents"])
 
 
 def _get_state(request: Request) -> AppState:
-    return request.app.state.app
+    return app_state(request)
 
 
 class ArchiveRequest(BaseModel):

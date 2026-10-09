@@ -180,7 +180,7 @@ class VectorBackend:
         values  = [qsparse[k] for k in indices]
         if not indices:
             return []
-        return await self._qdrant._client.search(  # type: ignore[attr-defined]
+        return await self._qdrant._client.search(
             collection_name="chunks",
             query_vector=qm.NamedSparseVector(
                 name="sparse",
@@ -195,7 +195,7 @@ class VectorBackend:
         self, *, qvec: list[float], qfilter: qm.Filter, limit: int,
     ) -> list:  # type: ignore[type-arg]
         """Search summaries by dense head."""
-        return await self._qdrant._client.search(  # type: ignore[attr-defined]
+        return await self._qdrant._client.search(
             collection_name="summaries",
             query_vector=("dense", qvec),
             query_filter=qfilter,

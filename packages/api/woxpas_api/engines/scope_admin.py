@@ -25,9 +25,14 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 import structlog
+
+if TYPE_CHECKING:
+    from woxpas_runtime import EmbedderBackend
+    from woxpas_storage import PostgresPool, QdrantClient
 
 log = structlog.get_logger(__name__)
 
@@ -58,7 +63,7 @@ class ScopeAdminEngine:
     (no per-request mutable state held)."""
 
     def __init__(
-        self, *, pool, qdrant, embedder,                  # type: ignore[no-untyped-def]
+        self, *, pool: PostgresPool, qdrant: QdrantClient, embedder: EmbedderBackend,
     ) -> None:
         self._pool     = pool
         self._qdrant   = qdrant

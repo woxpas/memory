@@ -38,7 +38,7 @@ async def _publish_doc_chunked(  # local helper since it's the only consumer for
     tenant_id, doc_id, pipeline_version,
     chunk_count: int, span_count: int,
     correlation_id=None, causation_id=None,
-):  # type: ignore[no-untyped-def]
+):
     return await outbox.publish(Event(
         event_type=EventType.DOC_CHUNKED,
         pipeline_version=pipeline_version,
@@ -188,7 +188,7 @@ class ChunkStage:
 
     async def _record_failure(
         self, tenant_id, doc_id, run_id, error_class, message, retriable, causation_id,
-    ):  # type: ignore[no-untyped-def]
+    ):
         async with self._ctx.pool.tenant_session(tenant_id) as conn:
             run_repo = PipelineRunRepo(conn)
             outbox   = OutboxRepo(conn)

@@ -241,7 +241,7 @@ class ScopeReassigner:
         in QdrantClient.search_similar_summaries."""
         from woxpas_storage.qdrant.collections import Collection, Vec
         try:
-            retrieved = await self._qdrant._client.retrieve(   # type: ignore[attr-defined]
+            retrieved = await self._qdrant._client.retrieve(
                 collection_name=Collection.SUMMARIES.value,
                 ids=[str(embedding_ref)],
                 with_vectors=True,

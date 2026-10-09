@@ -23,10 +23,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from io import BytesIO
 
-from docx import Document  # type: ignore[import-untyped]
-from docx.oxml.ns import qn  # type: ignore[import-untyped]
-from docx.table import Table  # type: ignore[import-untyped]
-from docx.text.paragraph import Paragraph  # type: ignore[import-untyped]
+from docx import Document
+from docx.oxml.ns import qn
+from docx.table import Table
+from docx.text.paragraph import Paragraph
 from woxpas_core import (
     Block,
     BlockType,

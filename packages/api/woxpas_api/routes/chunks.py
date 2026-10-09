@@ -22,14 +22,14 @@ Response shape:
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any, cast
 from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from woxpas_api.auth import tenant_id_dep
-from woxpas_api.state import AppState
+from woxpas_api.state import AppState, app_state
 
 log = structlog.get_logger(__name__)
 
@@ -37,7 +37,7 @@ router = APIRouter(tags=["chunks"])
 
 
 def _get_state(request: Request) -> AppState:
-    return request.app.state.app
+    return app_state(request)
 
 
 @router.get("/chunks/{chunk_id}")
@@ -46,7 +46,7 @@ async def get_chunk(
     request:   Request,
     tenant_id: Annotated[UUID, Depends(tenant_id_dep)],
     context:   Annotated[int, Query(ge=0, le=5)] = 1,
-) -> dict:
+) -> dict[str, Any]:
     """Fetch a chunk by id with optional surrounding context.
 
     Returns 404 for both "chunk not in DB" and "chunk in another tenant" —
@@ -70,10 +70,10 @@ async def get_chunk(
         )
 
     # Normalize the dict for JSON serialization (UUIDs, datetimes).
-    return _to_jsonable(result)
+    return cast("dict[str, Any]", _to_jsonable(result))
 
 
-def _to_jsonable(value):
+def _to_jsonable(value: Any) -> Any:
     """Recursive UUID/datetime → str conversion. Mirrors the synthesize
     encoder; kept local here so the chunks route has no synthesis
     dependency."""

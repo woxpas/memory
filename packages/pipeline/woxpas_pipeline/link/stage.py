@@ -483,7 +483,7 @@ class LinkingStage:
     async def _claim_object_to_fact_value(
         self,
         *,
-        conn,                                # type: ignore[no-untyped-def]
+        conn,
         tenant_id: UUID,
         object_entity_id: UUID | None,
         object_value:     dict[str, Any] | None,

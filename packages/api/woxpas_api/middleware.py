@@ -21,7 +21,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 log = structlog.get_logger(__name__)
 
@@ -39,7 +39,9 @@ class AuditMiddleware(BaseHTTPMiddleware):
     Honors API_AUDIT_LEVEL ∈ {full, errors_only, off}.
     """
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint,
+    ) -> Response:
         if request.url.path in _SKIP_PATHS:
             return await call_next(request)
 

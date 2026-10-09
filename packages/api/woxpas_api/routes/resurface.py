@@ -35,7 +35,7 @@ from woxpas_resurfacing import (
 )
 
 from woxpas_api.auth import tenant_id_dep
-from woxpas_api.state import AppState
+from woxpas_api.state import AppState, app_state
 
 log = structlog.get_logger(__name__)
 
@@ -43,7 +43,7 @@ router = APIRouter(tags=["resurface"])
 
 
 def _get_state(request: Request) -> AppState:
-    return request.app.state.app
+    return app_state(request)
 
 
 @router.get("/resurface/context", response_model=ThinkingBrainContext)
@@ -94,7 +94,7 @@ async def resurface_context(
 async def resurface_refresh_scores(
     request:   Request,
     tenant_id: Annotated[UUID, Depends(tenant_id_dep)],
-) -> dict:
+) -> dict[str, Any]:
     """Manually trigger ScoreMaintainer for this tenant.
 
     Walks active entities/ideas/documents and refreshes

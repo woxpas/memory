@@ -50,7 +50,7 @@ class PdfExtractor(Extractor):
 
     def extract(self, inp: ExtractInput) -> ExtractResult:
         # Lazy import: pdfplumber is heavy; only loads when a PDF actually arrives.
-        import pdfplumber  # type: ignore[import]
+        import pdfplumber
 
         blocks: list[Block] = []
         total_chars = 0

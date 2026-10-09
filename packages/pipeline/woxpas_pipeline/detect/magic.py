@@ -25,7 +25,7 @@ _magic = None
 def _load_magic():  # type: ignore[no-untyped-def]
     global _magic
     if _magic is None:
-        import magic  # type: ignore[import]
+        import magic
         _magic = magic.Magic(mime=True)
     return _magic
 

@@ -111,7 +111,7 @@ class QuestionPreCacher:
     once per worker; pass `synthesize_fn` from the dreaming-worker CLI."""
 
     def __init__(
-        self, *, pool, synthesize_fn: SynthesizeFn,    # type: ignore[no-untyped-def]
+        self, *, pool, synthesize_fn: SynthesizeFn,
         cloud_model: str = _DEFAULT_CLOUD_MODEL,
         top_entities_per_pass: int = _TOP_ENTITIES_PER_PASS,
         top_scopes_per_pass:   int = _TOP_SCOPES_PER_PASS,

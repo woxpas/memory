@@ -96,7 +96,7 @@ class AuditWriter:
     """
 
     def __init__(
-        self, *, pool, level: str = "full",                   # type: ignore[no-untyped-def]
+        self, *, pool, level: str = "full",
         actor: str = "mcp-agent",
     ) -> None:
         self._pool   = pool

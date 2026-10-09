@@ -13,8 +13,12 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING, Any
 
 import structlog
+
+if TYPE_CHECKING:
+    from llama_cpp import Llama
 
 from woxpas_runtime.hwprobe import Backend, HardwareInfo, probe
 from woxpas_runtime.llm_backend import (
@@ -45,7 +49,7 @@ class LocalLlamaCppBackend:
         self._artefact = artefact
         self._hw = hw or probe()
         self._n_ctx = n_ctx
-        self._llm = None
+        self._llm: Llama | None = None
         self._lock = asyncio.Lock()
 
     @property
@@ -68,14 +72,15 @@ class LocalLlamaCppBackend:
             log.info("llm.local.load_begin",
                      model=self.model_version, n_gpu_layers=n_gpu_layers)
             self._llm = await asyncio.to_thread(
-                Llama,
-                model_path=str(path),
-                n_ctx=self._n_ctx,
-                n_threads=self._hw.threads,
-                n_gpu_layers=n_gpu_layers,
-                logits_all=False,
-                verbose=True,                  # see module docstring
-                seed=0,
+                lambda: Llama(
+                    model_path=str(path),
+                    n_ctx=self._n_ctx,
+                    n_threads=self._hw.threads,
+                    n_gpu_layers=n_gpu_layers,
+                    logits_all=False,
+                    verbose=True,                  # see module docstring
+                    seed=0,
+                )
             )
             log.info("llm.local.loaded", model=self.model_version)
 
@@ -94,7 +99,7 @@ class LocalLlamaCppBackend:
         # Use llama-cpp's built-in chat-template formatting via create_chat_completion.
         # That converts messages → the model's instruction format (Qwen2 / Llama-3 / etc.)
         # automatically based on the GGUF metadata. No prompt formatting in our code.
-        request: dict = {
+        request: dict[str, Any] = {
             "messages": [{"role": m.role, "content": m.content} for m in messages],
             "max_tokens": max_tokens,
             "temperature": temperature,
@@ -103,9 +108,11 @@ class LocalLlamaCppBackend:
         if response_format == "json_object":
             request["response_format"] = {"type": "json_object"}
 
-        def _run() -> dict:
+        def _run() -> Any:
+            # Non-streaming call → a completion response dict; llama-cpp types
+            # it as a response|iterator union, so return Any and index below.
             assert self._llm is not None
-            return self._llm.create_chat_completion(**request)        # type: ignore[no-any-return]
+            return self._llm.create_chat_completion(**request)
 
         out = await asyncio.wait_for(asyncio.to_thread(_run), timeout=timeout_s)
 
@@ -151,7 +158,7 @@ class LocalLlamaCppBackend:
         await self._ensure_loaded()
         assert self._llm is not None
 
-        request: dict = {
+        request: dict[str, Any] = {
             "messages": [{"role": m.role, "content": m.content} for m in messages],
             "max_tokens": max_tokens,
             "temperature": temperature,
@@ -166,7 +173,7 @@ class LocalLlamaCppBackend:
         # Sentinel for an error from the worker thread; carries the exception.
         _ERROR = object()
 
-        queue: asyncio.Queue = asyncio.Queue(maxsize=64)
+        queue: asyncio.Queue[Any] = asyncio.Queue(maxsize=64)
         loop = asyncio.get_running_loop()
 
         def _worker() -> None:

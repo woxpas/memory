@@ -14,8 +14,12 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import structlog
+
+if TYPE_CHECKING:
+    from faster_whisper import WhisperModel
 
 from woxpas_runtime.hwprobe import Backend, HardwareInfo, probe
 from woxpas_runtime.models import (
@@ -59,7 +63,7 @@ class WhisperAsr:
         else:
             self._artefact = resolve_model(model_name or DEFAULT_ASR_MODEL_NAME)
         self._hw = hw or probe()
-        self._model = None
+        self._model: WhisperModel | None = None
         self._lock = asyncio.Lock()
 
     @property
@@ -86,9 +90,11 @@ class WhisperAsr:
                      model=self.model_version, device=device, compute_type=compute_type,
                      path=str(path))
             self._model = await asyncio.to_thread(
-                WhisperModel, str(path),
-                device=device, compute_type=compute_type,
-                cpu_threads=self._hw.threads,
+                lambda: WhisperModel(
+                    str(path),
+                    device=device, compute_type=compute_type,
+                    cpu_threads=self._hw.threads,
+                )
             )
             log.info("asr.loaded", model=self.model_version)
 

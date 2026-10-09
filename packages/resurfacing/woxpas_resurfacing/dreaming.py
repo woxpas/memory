@@ -63,7 +63,7 @@ class DreamingWorker:
         pool:           PostgresPool,
         settings:       DreamingSettings | None = None,
         question_cache: QuestionPreCacher | None = None,
-        qdrant=None,                                            # type: ignore[no-untyped-def]
+        qdrant=None,
     ) -> None:
         self._pool     = pool
         self._settings = settings or DreamingSettings()

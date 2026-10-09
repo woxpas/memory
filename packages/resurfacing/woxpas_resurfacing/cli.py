@@ -100,8 +100,8 @@ async def _amain() -> int:
 
 
 async def _build_question_cache(
-    *, pool, model_name: str,                                # type: ignore[no-untyped-def]
-) -> tuple[QuestionPreCacher, PipelineContext]:            # type: ignore[name-defined]
+    *, pool, model_name: str,
+) -> tuple[QuestionPreCacher, PipelineContext]:
     """Constructs synthesis dependencies and wraps SynthesisEngine in a
     closure for QuestionPreCacher. Mirrors the AppState construction
     pattern but reuses the worker's pool to avoid double-pooling."""

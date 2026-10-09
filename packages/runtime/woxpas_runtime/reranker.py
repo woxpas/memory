@@ -19,9 +19,12 @@ repo + commit hash).
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
+
+if TYPE_CHECKING:
+    from tokenizers import Tokenizer
 
 from woxpas_runtime.hwprobe import HardwareInfo, probe
 from woxpas_runtime.models import ModelArtefact, fetch
@@ -78,8 +81,8 @@ class BgeRerankerOnnx:
             or artefact.onnx_subpath
             or "onnx/model.onnx"
         )
-        self._tokenizer = None
-        self._session   = None
+        self._tokenizer: Tokenizer | None = None
+        self._session:   Any = None          # onnxruntime.InferenceSession (untyped dep)
         self._lock      = asyncio.Lock()
 
     @property
@@ -107,7 +110,7 @@ class BgeRerankerOnnx:
             from tokenizers import Tokenizer
             tok_path = snapshot_dir / "tokenizer.json"
             self._tokenizer = await asyncio.to_thread(
-                Tokenizer.from_file, str(tok_path),
+                lambda: Tokenizer.from_file(str(tok_path)),
             )
 
             # ONNX session.
@@ -120,9 +123,10 @@ class BgeRerankerOnnx:
 
             onnx_path = snapshot_dir / self._onnx_subpath
             self._session = await asyncio.to_thread(
-                ort.InferenceSession,
-                str(onnx_path),
-                providers=providers,
+                lambda: ort.InferenceSession(
+                    str(onnx_path),
+                    providers=providers,
+                )
             )
             log.info("reranker.loaded",
                      model=self.model_version, providers=providers)

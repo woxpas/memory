@@ -93,7 +93,7 @@ async def _amain() -> int:
 
     # Wrap server.run so transports always get (reader, writer) → run(reader, writer, opts)
     def _run(reader: Any, writer: Any) -> Any:
-        return server._mcp.run(reader, writer, server._mcp.create_initialization_options())  # type: ignore[attr-defined]
+        return server._mcp.run(reader, writer, server._mcp.create_initialization_options())
 
     serve_task = asyncio.create_task(transport.serve(_run))
     stop_task  = asyncio.create_task(stop.wait())

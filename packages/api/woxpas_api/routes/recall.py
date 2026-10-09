@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from woxpas_retrieval import RetrievalRequest, RetrievalResult
 
 from woxpas_api.auth import tenant_id_dep
-from woxpas_api.state import AppState
+from woxpas_api.state import AppState, app_state
 
 log = structlog.get_logger(__name__)
 
@@ -28,7 +28,7 @@ router = APIRouter(tags=["recall"])
 
 
 def _get_state(request: Request) -> AppState:
-    return request.app.state.app
+    return app_state(request)
 
 
 @router.post("/recall", response_model=RetrievalResult)
