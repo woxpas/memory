@@ -1,0 +1,36 @@
+name: Claude Code
+
+# Responds when a repo maintainer writes "@claude ..." in an issue or PR
+# comment. Gated to OWNER/COLLABORATOR/MEMBER so untrusted contributors on a
+# public repo can't invoke Claude with the repo token. issue_comment and
+# pull_request_review_comment always run in the BASE repo's context (secrets
+# available), so a maintainer can safely @claude a fork PR for review.
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  claude:
+    # Only run on an explicit @claude mention from someone with write access.
+    if: |
+      contains(github.event.comment.body, '@claude') &&
+      (github.event.comment.author_association == 'OWNER' ||
+       github.event.comment.author_association == 'COLLABORATOR' ||
+       github.event.comment.author_association == 'MEMBER')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
