@@ -90,7 +90,7 @@ class PatternDetector:
                 _OBSERVATION_LOOKBACK_DAYS,
             )
 
-            counts = {"observation_count_30d": len(obs)}
+            counts: dict[str, Any] = {"observation_count_30d": len(obs)}
 
             if not obs:
                 # Cold tenant — clear or leave defaults; either way
@@ -158,7 +158,7 @@ class PatternDetector:
 
     # ─── Detectors ──────────────────────────────────────────────────────────
 
-    def _detect_answer_length(self, obs: list) -> str:
+    def _detect_answer_length(self, obs: list[Any]) -> str:
         """If user dismissed >60% of long answers, set 'concise'.
         Need ≥5 long-answer data points before flipping preference.
 
@@ -190,7 +190,7 @@ class PatternDetector:
         return "normal"
 
     def _detect_most_active_hour(
-        self, obs: list, *, tz: ZoneInfo,
+        self, obs: list[Any], *, tz: ZoneInfo,
     ) -> int | None:
         """Peak hour by observation count, in tenant-local time.
         Returns None for low counts (< 10) — too noisy."""
@@ -206,12 +206,12 @@ class PatternDetector:
             return None
         return hours.most_common(1)[0][0]
 
-    def _detect_top_tools(self, obs: list) -> list[str]:
+    def _detect_top_tools(self, obs: list[Any]) -> list[str]:
         """Frequency rank of tool_called over the lookback window."""
         tools: Counter[str] = Counter(o["tool_called"] for o in obs if o["tool_called"])
         return [name for name, _ in tools.most_common(_TOP_TOOLS_LIMIT)]
 
-    def _detect_top_skills(self, obs: list) -> list[str]:
+    def _detect_top_skills(self, obs: list[Any]) -> list[str]:
         """Phase 5a.4.1 — frequency rank of skill_id over the lookback
         window. Skipped observations with skill_id=null (direct tool
         calls). Returns empty list when no skill-aware observations
@@ -222,7 +222,7 @@ class PatternDetector:
         return [name for name, _ in skills.most_common(_TOP_TOOLS_LIMIT)]
 
     def _detect_most_active_day_of_week(
-        self, obs: list, *, tz: ZoneInfo,
+        self, obs: list[Any], *, tz: ZoneInfo,
     ) -> int | None:
         """Peak weekday (0=Monday, 6=Sunday, ISO convention) by
         observation count, in tenant-local time. Returns None for
@@ -242,7 +242,7 @@ class PatternDetector:
         return days.most_common(1)[0][0]
 
     def _detect_tool_by_hour(
-        self, obs: list, *, tz: ZoneInfo,
+        self, obs: list[Any], *, tz: ZoneInfo,
     ) -> dict[str, list[str]]:
         """Phase 5a.3.1 — per-hour top tool aggregation in tenant-
         local time. {"9": ["memory.ask", ...], ...}. Hours with
@@ -269,7 +269,7 @@ class PatternDetector:
         return out
 
     def _detect_skill_by_hour(
-        self, obs: list, *, tz: ZoneInfo,
+        self, obs: list[Any], *, tz: ZoneInfo,
     ) -> dict[str, list[str]]:
         """Phase 5a.3.1 — per-hour top skill aggregation in tenant-
         local time. Same shape as tool_by_hour but keyed on skill_id

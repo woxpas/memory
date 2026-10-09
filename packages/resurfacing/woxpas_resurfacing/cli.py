@@ -21,7 +21,7 @@ from __future__ import annotations
 import asyncio
 import signal
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import structlog
@@ -86,7 +86,7 @@ async def _amain() -> int:
     loop = asyncio.get_event_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig,
-            lambda s=sig: asyncio.create_task(_handle_signal(s, worker)))
+            lambda s=sig: asyncio.create_task(_handle_signal(s, worker)))  # type: ignore[misc]  # mypy can't infer a lambda with a default-arg capture
 
     try:
         await worker.start()
@@ -100,7 +100,7 @@ async def _amain() -> int:
 
 
 async def _build_question_cache(
-    *, pool, model_name: str,
+    *, pool: PostgresPool, model_name: str,
 ) -> tuple[QuestionPreCacher, PipelineContext]:
     """Constructs synthesis dependencies and wraps SynthesisEngine in a
     closure for QuestionPreCacher. Mirrors the AppState construction
@@ -130,11 +130,11 @@ async def _build_question_cache(
     )
     verifier = CitationVerifier(embedder)
 
-    backend_cache: dict = {intent_llm.name: intent_llm} if intent_llm else {}
-    def llm_factory(name: str | None):
+    backend_cache: dict[str, Any] = {intent_llm.name: intent_llm} if intent_llm else {}
+    def llm_factory(name: str | None) -> Any:
         if name is None and intent_llm is not None:
             return intent_llm
-        from woxpas_synthesis.engine import build_llm_backend
+        from woxpas_runtime import build_llm_backend
         resolved = name or "qwen2.5-3b-instruct-q4km"
         cached = backend_cache.get(resolved)
         if cached is not None:

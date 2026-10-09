@@ -60,10 +60,13 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import structlog
+
+if TYPE_CHECKING:
+    from woxpas_storage import PostgresPool
 
 log = structlog.get_logger(__name__)
 
@@ -111,7 +114,7 @@ class QuestionPreCacher:
     once per worker; pass `synthesize_fn` from the dreaming-worker CLI."""
 
     def __init__(
-        self, *, pool, synthesize_fn: SynthesizeFn,
+        self, *, pool: PostgresPool, synthesize_fn: SynthesizeFn,
         cloud_model: str = _DEFAULT_CLOUD_MODEL,
         top_entities_per_pass: int = _TOP_ENTITIES_PER_PASS,
         top_scopes_per_pass:   int = _TOP_SCOPES_PER_PASS,

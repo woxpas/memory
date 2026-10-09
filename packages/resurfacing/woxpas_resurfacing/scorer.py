@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import time
 from datetime import timedelta
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -392,7 +393,7 @@ class PatternScorer:
 
     # ─── helpers ───────────────────────────────────────────────────────────
 
-    async def _maybe_refresh_velocity(self, conn) -> None:
+    async def _maybe_refresh_velocity(self, conn: Any) -> None:
         """Refresh v_mention_velocity matview if its computed_at is older
         than half the trending TTL. Cheap if data hasn't changed; the
         materialized view's REFRESH supports CONCURRENTLY when there's
@@ -422,7 +423,7 @@ class PatternScorer:
             """
         )
 
-    async def _refresh_velocity(self, conn) -> None:
+    async def _refresh_velocity(self, conn: Any) -> None:
         """Force-refresh the velocity matview. Runs CONCURRENTLY to avoid
         blocking readers."""
         await conn.execute(

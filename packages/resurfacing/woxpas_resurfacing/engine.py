@@ -630,7 +630,7 @@ class ResurfaceEngine:
         self,
         *,
         tenant_id: UUID,
-        context:   dict | None = None,
+        context:   dict[str, Any] | None = None,
         limit:     int = 5,
     ) -> ToolSuggestions:
         """Frequency-ranked tool suggestions for the agent's current
@@ -670,14 +670,14 @@ class ResurfaceEngine:
             metrics={"total_ms": round((time.monotonic() - t_start) * 1000, 1)},
         )
 
-    async def detect_patterns(self, *, tenant_id: UUID) -> dict:
+    async def detect_patterns(self, *, tenant_id: UUID) -> dict[str, Any]:
         """Trigger PatternDetector for one tenant. Exposed for manual
         invocation; the dreaming worker calls this on schedule."""
         return await self._pattern_detector.update_preferences_for_tenant(
             tenant_id=tenant_id,
         )
 
-    async def detect_opportunities(self, *, tenant_id: UUID) -> dict:
+    async def detect_opportunities(self, *, tenant_id: UUID) -> dict[str, Any]:
         """Trigger OpportunityDetector for one tenant (Phase 5a.3.1).
         Exposed for manual invocation + sync cold-start fallback when
         a list endpoint is hit on a tenant the dreaming worker hasn't
@@ -1150,7 +1150,7 @@ def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _task_brief_from_row(r) -> TaskBrief:
+def _task_brief_from_row(r: Any) -> TaskBrief:
     return TaskBrief(
         task_id=r["task_id"], title=r["title"], kind=r["kind"],
         status=r["status"], due_at=r["due_at"],

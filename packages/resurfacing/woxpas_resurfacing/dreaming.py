@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
 import structlog
@@ -49,7 +49,7 @@ from woxpas_resurfacing.scorer import PatternScorer
 from woxpas_resurfacing.settings import DreamingSettings
 
 if TYPE_CHECKING:
-    from woxpas_storage import PostgresPool
+    from woxpas_storage import PostgresPool, QdrantClient
 
 log = structlog.get_logger(__name__)
 
@@ -63,7 +63,7 @@ class DreamingWorker:
         pool:           PostgresPool,
         settings:       DreamingSettings | None = None,
         question_cache: QuestionPreCacher | None = None,
-        qdrant=None,
+        qdrant: QdrantClient | None = None,
     ) -> None:
         self._pool     = pool
         self._settings = settings or DreamingSettings()
@@ -84,7 +84,7 @@ class DreamingWorker:
             if qdrant is not None else None
         )
         self._stop_event = asyncio.Event()
-        self._tasks: list[asyncio.Task] = []
+        self._tasks: list[asyncio.Task[None]] = []
 
     # ─── lifecycle ─────────────────────────────────────────────────────────
 
@@ -293,7 +293,7 @@ class DreamingWorker:
             # Sum of positive counts only — sub-routines return -1 to
             # signal failure. Clamp to keep bookkeeping artifact counts
             # honest (never negative).
-            def _pos(v) -> int:
+            def _pos(v: Any) -> int:
                 try:
                     return max(0, int(v))
                 except (TypeError, ValueError):
@@ -354,7 +354,7 @@ class DreamingWorker:
                 """,
                 tenant_id,
             )
-        return run_id
+        return cast(UUID, run_id)
 
     async def _end_run(
         self, run_id: UUID, *,
