@@ -18,11 +18,17 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `woxpas-cli install-claude-desktop` merges the MCP server into Claude Desktop's
   config safely (OS-path detection, backup, leaves other servers untouched).
   Bootstrap's final screen and the README now point at this 3-command path.
-- Root `Dockerfile` (one image for all app processes) as groundwork for an
-  all-in-Docker run; the app services in `docker-compose.yml` are gated behind
-  the `app` profile and documented as experimental (the API needs
-  `API_AUTH_MODE=jwt` in a container — the dev-auth loopback guard blocks a
-  non-loopback bind).
+- **Docker-only install** (no `uv`, no host Python 3.12): `./install.sh "Your
+  Name"` builds one image for all app processes, generates secrets
+  (`woxpas-cli init-env` via the `cli` compose service), starts the stack, creates
+  the tenant, and wires Claude Desktop (stdlib `scripts/install_claude_desktop.py`).
+  The app runs entirely in containers — verified end-to-end (migrations,
+  worker + dreaming worker boot clean, DEK loaded from `.env`). `docker compose`
+  profiles: default = datastores + migrations; `app` = workers; `api` = the
+  HTTP gateway (off by default; pinned to `API_AUTH_MODE=jwt` with no published
+  port); `mcp`/`cli` for one-shot runs.
+- `install-claude-desktop --docker` points Claude at the containerized MCP server
+  (`docker compose run`) so no host `uv`/Python is needed to use it.
 
 ### Changed
 - Curated the `ruff` configuration to reflect the project's house style

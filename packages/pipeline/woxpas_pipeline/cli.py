@@ -701,6 +701,48 @@ def _claude_desktop_config_path() -> Path:
     return Path(base) / "Claude" / "claude_desktop_config.json"
 
 
+async def cmd_init_env(args: argparse.Namespace) -> int:
+    """Create `.env` with generated infrastructure secrets.
+
+    Lets a no-`uv` Docker-only install generate its secrets inside a container
+    (`docker compose run --rm cli woxpas-cli init-env`). Uses `.env.example` as
+    the template when present and fills any empty POSTGRES_PASSWORD /
+    QDRANT_API_KEY / MINIO_ROOT_PASSWORD with random values. Idempotent — it
+    never overwrites secrets that are already set.
+    """
+    import secrets as _secrets
+
+    env_path = Path(_ENV_PATH)
+    example = Path(".env.example")
+    if not env_path.is_file():
+        if example.is_file():
+            env_path.write_text(example.read_text())
+            print(f"  created {env_path} from .env.example")
+        else:
+            env_path.write_text("")
+            print(f"  created empty {env_path}")
+
+    env = _read_env(_ENV_PATH)
+    generated = []
+    for key in ("POSTGRES_PASSWORD", "QDRANT_API_KEY", "MINIO_ROOT_PASSWORD"):
+        if not env.get(key):
+            env[key] = _secrets.token_hex(24)
+            generated.append(key)
+    # Sensible defaults if the template didn't carry them.
+    env.setdefault("POSTGRES_DB", "woxpas")
+    env.setdefault("POSTGRES_USER", "woxpas")
+    env.setdefault("MINIO_ROOT_USER", "woxpas")
+    if not env.get("API_AUTH_MODE"):
+        env["API_AUTH_MODE"] = "dev"
+    _write_env(_ENV_PATH, env)
+
+    if generated:
+        print(f"  generated infra secrets: {', '.join(generated)}")
+    else:
+        print("  infra secrets already present — nothing to generate")
+    return 0
+
+
 async def cmd_install_claude_desktop(args: argparse.Namespace) -> int:
     """Merge the Woxpas MCP server into Claude Desktop's config file.
 
@@ -2762,6 +2804,11 @@ def _build_parser() -> argparse.ArgumentParser:
     down.add_argument("--docker", action="store_true",
                       help="Also stop the Docker data services")
     down.set_defaults(func=cmd_down)
+
+    ienv = sub.add_parser("init-env",
+                          help="Create .env with generated infra secrets "
+                               "(for a no-uv Docker-only install, via `docker compose run cli`)")
+    ienv.set_defaults(func=cmd_init_env)
 
     icd = sub.add_parser("install-claude-desktop",
                          help="Add the Woxpas MCP server to Claude Desktop's config "

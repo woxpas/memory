@@ -8,11 +8,15 @@ layer that any MCP agent can talk to. Every step explains *what* it does and
 > guide is the operational manual. For an honest account of what is and isn't
 > production-ready, read [SECURITY.md](../SECURITY.md).
 
-> **Just want it running?** The short path is three commands —
-> `uv run woxpas-cli bootstrap`, then `woxpas-cli up`, then
-> `woxpas-cli install-claude-desktop` (restart Claude Desktop after). This guide
-> below is the *long* form that explains each piece and covers the manual
-> service start, the boot daemon, Cursor, and cloud deployment.
+> **Just want it running?**
+> - **Docker only (no uv):** `./install.sh "Your Name"` — builds the image,
+>   generates secrets, starts everything in containers, creates your tenant, and
+>   wires Claude Desktop. Restart Claude Desktop after.
+> - **With uv:** `uv run woxpas-cli bootstrap`, then `woxpas-cli up`, then
+>   `woxpas-cli install-claude-desktop`.
+>
+> This guide below is the *long* form that explains each piece and covers the
+> manual service start, the boot daemon, Cursor, and cloud deployment.
 
 ---
 
@@ -44,9 +48,10 @@ layer that any MCP agent can talk to. Every step explains *what* it does and
 
 | Requirement | Notes |
 |---|---|
-| **Docker + Docker Compose** | Runs Postgres, Qdrant, MinIO, and ClamAV. |
-| **[`uv`](https://github.com/astral-sh/uv)** | The Python workspace manager. `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| **Python 3.12+** | `uv` can install it for you (`uv python install 3.12`). |
+| **Docker Desktop** | Required. Runs the datastores and — in the Docker-only install — the app itself. |
+| **`bash` + `python3` (any version)** | Only for `./install.sh` (the Claude Desktop step). Already on macOS/Linux. |
+| **[`uv`](https://github.com/astral-sh/uv)** | *Only for the dev path* (`woxpas-cli` on the host). `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| **Python 3.12+** | *Only for the dev path.* `uv` can install it (`uv python install 3.12`). |
 | **Disk** | ~6 GB for local models (embedder, reranker, ASR, Qwen LLM) + space for your data volumes. |
 | **RAM** | 8 GB minimum; 16 GB comfortable (the local LLM + embedder run in-process). |
 | **Accelerator (optional)** | Apple Silicon (Metal), CUDA, or ROCm are auto-detected. CPU-only works — it's the design floor. |

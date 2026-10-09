@@ -203,33 +203,38 @@ scripts/        migrate.sh, model-mirror instructions.
 
 ## Quickstart
 
-**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-(running), [`uv`](https://github.com/astral-sh/uv), Python 3.12+, ~6 GB free disk
-for models, 8 GB+ RAM.
+### Simplest — one script, Docker only
 
-Three commands from a fresh clone to a memory your agent can use:
+**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+(running) + ~6 GB free disk + 8 GB RAM. (The script also uses `bash` and a
+`python3` of any version for the Claude Desktop step — both already on macOS and
+Linux. No `uv`, no Python 3.12.)
 
 ```bash
-uv run woxpas-cli bootstrap              # 1. one-time setup
-uv run woxpas-cli up                     # 2. start everything
+./install.sh "Your Name"
+```
+
+It builds the image, generates secrets, starts the datastores and workers,
+creates your tenant (you choose a passphrase), and wires Claude Desktop — then
+**restart Claude Desktop** and Woxpas shows up as a set of memory tools.
+Everything runs in containers; stop it with `docker compose --profile app down`.
+Re-running is safe.
+
+### Or — with the uv toolchain (for development)
+
+If you have [`uv`](https://github.com/astral-sh/uv) + Python 3.12+, three commands:
+
+```bash
+uv run woxpas-cli bootstrap              # 1. one-time setup (secrets, tenant, models)
+uv run woxpas-cli up                     # 2. start everything (one command, no extra terminals)
 uv run woxpas-cli install-claude-desktop # 3. wire up Claude Desktop
 ```
 
-Then **restart Claude Desktop** — Woxpas shows up as a set of memory tools.
-
-**1. `bootstrap`** (one-time) checks prerequisites, starts the datastores,
-installs the workspace, runs migrations, creates your tenant (asks for a name +
-a passphrase that protects your encryption key), and downloads the local models.
-Re-running is safe.
-
-**2. `up`** starts the datastores and the worker, API, and dreaming worker in the
-background — no extra terminals to babysit. Logs go to `~/.woxpas/logs/`; stop
-everything with `woxpas-cli down`.
-
-**3. `install-claude-desktop`** merges a `woxpas` entry into Claude Desktop's
-config (backing up any existing file and leaving your other MCP servers alone).
-Use `--print` to see the block without writing anything, or `--path` to target a
-different file.
+`up` runs the worker/API/dreaming worker in the background (logs in
+`~/.woxpas/logs/`; stop with `woxpas-cli down`). `install-claude-desktop` merges
+a `woxpas` entry into Claude Desktop's config, backing up any existing file and
+leaving your other MCP servers alone (`--print` to preview, `--docker` to point
+Claude at the containerized server instead of a host process).
 
 ### Try it from the terminal (optional)
 

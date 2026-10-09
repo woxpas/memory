@@ -256,6 +256,32 @@ services:
       - /tmp:size=64M
     # No ports — internal network only. Front it with a reverse proxy to expose.
 
+  cli:
+    # One-shot admin CLI in a container — lets a no-uv install generate secrets
+    # and create the tenant without host Python:
+    #   docker compose run --rm cli woxpas-cli init-env
+    #   docker compose run --rm cli woxpas-cli init-tenant --display-name "You"
+    # Mounts .env read-write so those write the infra secrets + the unwrapped DEK
+    # back to the host file, which compose then injects into the app services.
+    # (.env must exist first — `touch .env` — so Docker bind-mounts a file.)
+    profiles: ["cli"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    <<: *hardening
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+    volumes:
+      - ./.env:/app/.env
+      - ./.env.example:/app/.env.example:ro
+    networks:
+      - woxpas-internal
+    # No depends_on: `init-env` must work before the datastores exist.
+    # (`init-tenant` needs Postgres — bring the stack up first.)
+
   mcp:
     # Stdio MCP server, meant for `docker compose run --rm mcp`, not `up`.
     profiles: ["mcp"]
