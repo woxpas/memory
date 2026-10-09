@@ -28,6 +28,20 @@ Remote client ──HTTPS──▶ Tunnel ──HTTP──▶ woxpas-mcp-server 
 
 ## Step 1: Start the server
 
+**Docker install:**
+
+```bash
+docker compose --profile remote up -d        # starts the mcp-http service
+```
+
+The `mcp-http` service runs the HTTP transport and publishes it on
+`127.0.0.1:7801` (loopback only — the tunnel in Step 2 reaches it there). Set
+`WOXPAS_MCP_HTTP_MODE=sse` in `.env` for legacy clients, or
+`WOXPAS_MCP_AUTH_MODE=jwt` to verify tokens in-process instead of trusting the
+tunnel.
+
+**uv / host install:**
+
 ```bash
 # Streamable HTTP (default, MCP 2025-03-26+)
 uv run woxpas-cli serve-mcp
@@ -36,7 +50,7 @@ uv run woxpas-cli serve-mcp
 uv run woxpas-cli serve-mcp --http-mode sse
 ```
 
-The server listens on `127.0.0.1:7801`:
+Either way the server listens on `127.0.0.1:7801`:
 
 | Endpoint | Method | Purpose |
 |---|---|---|

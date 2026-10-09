@@ -172,6 +172,8 @@ services:
   #                      interface. (For local curl/testing, run the API on the
   #                      host via `woxpas-cli up`, where dev mode is loopback-safe.)
   #   --profile mcp    the stdio MCP server, for `docker compose run --rm mcp`.
+  #   --profile remote the HTTP MCP server (mcp-http) for cross-device access —
+  #                    publishes 127.0.0.1:7801; front it with a TLS tunnel.
 
   worker-pipeline:
     profiles: ["app"]
@@ -307,3 +309,42 @@ services:
       - models:/var/woxpas/models
     networks:
       - woxpas-internal
+
+  mcp-http:
+    # Remote MCP over HTTP — cross-device access (Claude mobile/web, another
+    # machine). Opt-in `remote` profile:  docker compose --profile remote up -d
+    # Publishes to 127.0.0.1 ONLY; put a tunnel (Tailscale Funnel/Serve,
+    # Cloudflare Tunnel) in front to terminate TLS and authenticate clients.
+    # auth_mode=env trusts that proxy; set WOXPAS_MCP_AUTH_MODE=jwt to verify
+    # tokens here instead. See docs/mcp/mobile.md.
+    profiles: ["remote"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["woxpas-mcp-server"]
+    <<: [*restart, *hardening]
+    depends_on:
+      postgres: {condition: service_healthy}
+      qdrant: {condition: service_healthy}
+      minio: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+      WOXPAS_MCP_TENANT_ID: ${WOXPAS_DEV_TENANT_ID_DEFAULT:-}
+      WOXPAS_MCP_TRANSPORT: http
+      WOXPAS_MCP_HTTP_HOST: 0.0.0.0          # bind inside the container; reachable via the published loopback port
+      WOXPAS_MCP_HTTP_PORT: "7801"
+      WOXPAS_MCP_HTTP_MODE: ${WOXPAS_MCP_HTTP_MODE:-streamable}
+      WOXPAS_MCP_AUTH_MODE: ${WOXPAS_MCP_AUTH_MODE:-env}
+    volumes:
+      - models:/var/woxpas/models
+    networks:
+      - woxpas-internal
+    ports:
+      - "127.0.0.1:7801:7801"                # loopback only — front with a tunnel for remote access
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M

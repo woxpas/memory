@@ -29,6 +29,10 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   port); `mcp`/`cli` for one-shot runs.
 - `install-claude-desktop --docker` points Claude at the containerized MCP server
   (`docker compose run`) so no host `uv`/Python is needed to use it.
+- Cross-device access from the Docker install: a `mcp-http` service (opt-in
+  `remote` profile) runs the HTTP MCP transport on `127.0.0.1:7801` for a TLS
+  tunnel (Tailscale/Cloudflare) to front — `docker compose --profile remote up -d`
+  (see docs/mcp/mobile.md).
 
 ### Changed
 - Curated the `ruff` configuration to reflect the project's house style
