@@ -1,5 +1,21 @@
 # Claude Desktop config
 
+**Easiest — let the CLI do it:**
+
+```bash
+uv run woxpas-cli install-claude-desktop    # host install (uv path)
+# Docker-only install (no uv): the MCP server runs in a container —
+docker compose run --rm cli woxpas-cli install-claude-desktop --docker
+# or, without uv:  python3 scripts/install_claude_desktop.py
+```
+
+It detects the OS config path, backs up any existing file, and merges a `woxpas`
+entry without touching your other MCP servers. Restart Claude Desktop afterward.
+`--print` shows the block without writing. The rest of this page is the manual
+reference for when you'd rather edit the file yourself.
+
+---
+
 Add Woxpas to Claude Desktop's MCP config file.
 
 **Config location:** `~/Library/Application Support/Claude/claude_desktop_config.json`

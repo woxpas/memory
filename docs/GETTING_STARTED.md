@@ -310,6 +310,10 @@ Everything runs offline after this step.
 
 ## 9. Run the services
 
+> **Easiest:** `uv run woxpas-cli up` starts all three in the background for you
+> (logs in `~/.woxpas/logs/`, stop with `woxpas-cli down`). The manual
+> three-terminal form below is for when you want each process in the foreground.
+
 Three long-running processes. Use three terminals (or a process manager).
 
 ```bash

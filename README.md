@@ -168,7 +168,7 @@ The ONNX-first choice is intentional: no `torch`, no `transformers`, no
 
 ## Repository layout
 
-A `uv` workspace of ten Python packages plus infra:
+A `uv` workspace of eleven Python packages plus infra:
 
 ```
 packages/
@@ -191,12 +191,16 @@ packages/
   resurfacing/  The "dreaming" worker, pattern scorers, opportunity detectors,
                 score maintainer, scope reassigner; `woxpas-dreaming-worker`.
   mcp/          The stdio MCP server exposing 27 tools over the shared engines.
+  boot/         `woxpas-unlock` — passphrase → Argon2id KEK → unwrap DEK → serve
+                it over a chmod-600 Unix socket (keeps the DEK off disk).
 
 migrations/     31 ordered SQL migrations — the full data model.
 infra/          Postgres init (extensions + roles), Qdrant config.
 docs/           MCP integration guides + this project's extended docs.
-tests/smoke/    21 smoke batteries (bash + Python MCP clients).
-scripts/        migrate.sh, model-mirror instructions.
+tests/smoke/    Smoke batteries (bash + Python MCP clients).
+scripts/        migrate.sh, install_claude_desktop.py, model-mirror instructions.
+Dockerfile      One image for all app processes (API, worker, dreaming, MCP).
+install.sh      Docker-only one-command installer.
 ```
 
 ---
@@ -237,6 +241,11 @@ leaving your other MCP servers alone (`--print` to preview, `--docker` to point
 Claude at the containerized server instead of a host process).
 
 ### Try it from the terminal (optional)
+
+Your agent (Claude Desktop) drives Woxpas through the MCP tools — that's the
+main interface. The HTTP API below is a convenience for scripting/testing and
+runs only on the **uv/host path** (`woxpas-cli up`): the Docker-only install
+keeps the API off by default (no exposed port) and uses the MCP server instead.
 
 ```bash
 curl -X POST 127.0.0.1:7800/ingest/text \
