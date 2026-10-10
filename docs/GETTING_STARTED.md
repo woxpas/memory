@@ -63,7 +63,7 @@ Woxpas is developed on macOS (Darwin) and Linux. Windows is untested; use WSL2.
 ## 2. Get the code
 
 ```bash
-git clone <your-fork-or-repo-url> woxpas-memory
+git clone https://github.com/woxpas/memory.git woxpas-memory
 cd woxpas-memory
 ```
 
@@ -89,7 +89,7 @@ uv run woxpas-cli bootstrap
 - **Display name** — your name, used for the self-entity and identity card.
 - **Passphrase** — required; encrypts your data-encryption key (Argon2id).
   You'll re-enter it to unlock after a restart.
-- **Model download confirmation** — shows the 4.2 GB budget and asks before
+- **Model download confirmation** — shows the ~6 GB budget and asks before
   pulling bytes.
 
 **It writes to `.env` automatically:**
@@ -207,7 +207,7 @@ ClamAV takes the longest — wait for it to report healthy before ingesting file
 ## 6. Install the workspace & run migrations
 
 ```bash
-uv sync --all-packages          # resolves and installs all 10 packages + dev tools
+uv sync --all-packages          # resolves and installs all 11 packages + dev tools
 bash scripts/migrate.sh         # applies migrations/versions/*.sql idempotently
 ```
 
