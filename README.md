@@ -72,7 +72,7 @@ chat history.
 | **Retrieval** | Intent-routed hybrid retrieval: a fast rule classifier (with optional LLM fallback) picks between semantic / timeline / type-listing / file-lookup / entity-card / graph strategies over Qdrant + Postgres, with a cross-encoder reranker. |
 | **Synthesis** | Streaming, **citation-verified** answers. The LLM cites source chunks inline; a deterministic verifier (lexical n-gram + cosine) checks each citation against the source span. No "LLM-as-judge." |
 | **Resurfacing** | A background "dreaming" worker that surfaces what matters — trending/fading/forgotten patterns, overdue tasks, open conflicts, dormant ideas — plus cross-agent preferences and prepared actions. |
-| **Sovereignty** | Encrypted at rest, closed-source-safe dependency set, pluggable model backends (local llama.cpp / OpenAI-compatible / Anthropic), cross-platform, offline-first. |
+| **Sovereignty** | Encrypted at rest, permissively licensed dependency set, pluggable model backends (local llama.cpp / OpenAI-compatible / Anthropic), cross-platform, offline-first. |
 
 ---
 
@@ -142,8 +142,8 @@ is decoupled and independently retryable.
 ## Technology stack
 
 Everything in the default path is **local and permissively licensed** (MIT /
-Apache-2.0 / BSD / MPL) — a deliberate constraint so the project stays
-closed-source-safe and vendor-neutral.
+Apache-2.0 / BSD / MPL) — a deliberate constraint so the whole stack stays
+license-clean and vendor-neutral.
 
 | Layer | Choice |
 |---|---|

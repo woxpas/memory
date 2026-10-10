@@ -79,7 +79,7 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.1.0] — unreleased
 
 Initial implementation of all four pipelines (ingestion, extraction,
-retrieval, synthesis) plus the resurfacing/cognition layer, a 27-tool MCP
+retrieval, synthesis) plus the resurfacing/cognition layer, a 28-tool MCP
 surface, bitemporal + RLS data model, envelope encryption at rest, and the
 passphrase → Argon2id KEK → DEK boot daemon. See [README.md](README.md) and
 [SECURITY.md](SECURITY.md).

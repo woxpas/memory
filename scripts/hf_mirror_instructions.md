@@ -31,9 +31,8 @@ runtime depends on.
 Read the source repo's LICENSE file. Confirm:
 - Allows redistribution
 - Requires attribution (we provide via README)
-- No use restrictions that conflict with closed-source distribution
-  (Woxpas memory is closed-source; the agent layer an agent is open-source —
-  both rely on these models)
+- No use restrictions that conflict with redistribution under a permissive
+  open-source license (Woxpas memory is Apache-2.0)
 
 If the license allows redistribution, proceed. If not, STOP and report.
 
