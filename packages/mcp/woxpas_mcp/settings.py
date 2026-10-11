@@ -30,6 +30,13 @@ class McpSettings(BaseSettings):
     spawn time and never derived from agent input. RLS at the DB layer
     is the second-line defense; this is the first."""
 
+    member_id: UUID | None = None
+    """OPTIONAL (team memory, Phase A2). WOXPAS_MCP_MEMBER_ID — which team
+    member this server acts for. When set, every write is attributed to this
+    member (documents, observations, prepared actions); when absent, writes
+    are unattributed (a single-person install, the common case). Bound at
+    spawn time like tenant_id, never derived from agent input."""
+
     transport: str = "stdio"
     """stdio (default) | http. stdio = Claude Desktop / Cursor local agents.
     http = bind an HTTP endpoint for remote agents (Claude Mobile, web-based

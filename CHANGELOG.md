@@ -7,6 +7,21 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Team memory (multi-member tenants).** A tenant can now be a shared team:
+  many members, each with their own passphrase-wrapped copy of the one shared
+  DEK (no plaintext key ever persisted), roles (`viewer`/`member`/`admin`/
+  `owner`), per-member attribution (`captured_by_member_id` / `actor_member_id`
+  on documents, observations, prepared actions, and audit rows), per-member
+  preferences & "self" identity, and private scopes (owner-only, RLS-enforced).
+  New CLI: `add-member` / `list-members` / `remove-member`, and
+  `create-scope --private`. New API: `GET/PATCH/DELETE /members`. New env:
+  `WOXPAS_MCP_MEMBER_ID` (bind an MCP server to a member) and
+  `API_REQUIRE_MEMBERSHIP` (reject non-member tokens in jwt mode). Role
+  enforcement and attribution apply in `jwt` mode; a solo install is a team of
+  one and behaves exactly as before. Migrations 032–035, 037. See
+  `docs/GETTING_STARTED.md` §13b and `docs/design/team-memory.md` (with
+  follow-up plans `me-resolution.md`, `private-content.md`, `dek-rotation.md`).
+  Verified live end-to-end over the HTTP API (jwt) and the MCP stdio server.
 - Open-source release scaffolding: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
   `NOTICE`, issue/PR templates, and a GitHub Actions CI workflow (lint + type
   check).
@@ -43,6 +58,10 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   third-party libraries in `[tool.mypy.overrides]`.
 
 ### Fixed
+- **Docker image was missing `libmagic`**, so the detect stage mis-typed every
+  ingested document as `application/octet-stream`, the extract stage failed, and
+  nothing ever reached `indexed` (recall returned nothing). Added `libmagic1` to
+  the `Dockerfile`. Caught during a live MCP ingest→recall test.
 - The `woxpas-cli` no longer dumps a raw `asyncpg` traceback when it can't
   authenticate to or reach Postgres; it prints a clean, actionable message
   (wrong credentials vs. stack not running) and exits non-zero.
@@ -73,6 +92,17 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   used a local model.
 
 ### Security
+- **Team-memory role gate now fails closed in jwt mode.** `require_min_role`
+  previously treated a request with no resolved member (role `None`) as full
+  access; in jwt mode with `API_REQUIRE_MEMBERSHIP` off (the default), a
+  validly-signed token whose subject isn't a member could reach the member-admin
+  routes. It now denies `None`-role requests on gated routes in jwt mode; the
+  `None`=allow exemption is limited to dev / single_tenant_local (loopback).
+- **Content-mutation API routes are now role-gated.** `ingest`, scope
+  create/assign/unassign, document archive/unarchive, conflict resolve, and the
+  resurface write routes now require `member+`, matching the MCP write tools (a
+  `viewer` could previously write through the HTTP API). Reads stay open to
+  viewers.
 - Hardened `.gitignore` to exclude model weights and HuggingFace caches at any
   depth (a stray multi-GB cache under `packages/` was otherwise un-ignored).
 

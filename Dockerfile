@@ -10,10 +10,15 @@
 
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
-# Native build deps: llama-cpp-python compiles llama.cpp (cmake + a C/C++
-# toolchain); libgomp1 is the OpenMP runtime onnxruntime / CTranslate2 need.
+# Native build + runtime deps:
+#   build-essential + cmake + git — llama-cpp-python compiles llama.cpp
+#   libgomp1                      — OpenMP runtime onnxruntime / CTranslate2 need
+#   libmagic1                     — libmagic, for content-type sniffing in the
+#                                   detect stage (python-magic). WITHOUT it, every
+#                                   ingested document mis-detects as octet-stream,
+#                                   fails the extract stage, and never indexes.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential cmake git libgomp1 \
+        build-essential cmake git libgomp1 libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

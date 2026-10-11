@@ -20,7 +20,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from woxpas_api.auth import tenant_id_dep
+from woxpas_api.auth import require_min_role, tenant_id_dep
 from woxpas_api.state import AppState, app_state
 
 log = structlog.get_logger(__name__)
@@ -46,7 +46,8 @@ class DocumentStateResponse(BaseModel):
     archived_at:   str | None = None
 
 
-@router.post("/documents/{doc_id}/archive", response_model=DocumentStateResponse)
+@router.post("/documents/{doc_id}/archive", response_model=DocumentStateResponse,
+             dependencies=[Depends(require_min_role("member"))])
 async def archive_document(
     doc_id:    UUID,
     body:      ArchiveRequest,
@@ -80,7 +81,8 @@ async def archive_document(
         ) from e
 
 
-@router.post("/documents/{doc_id}/unarchive", response_model=DocumentStateResponse)
+@router.post("/documents/{doc_id}/unarchive", response_model=DocumentStateResponse,
+             dependencies=[Depends(require_min_role("member"))])
 async def unarchive_document(
     doc_id:    UUID,
     request:   Request,

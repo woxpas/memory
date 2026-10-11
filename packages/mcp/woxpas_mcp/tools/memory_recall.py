@@ -73,6 +73,7 @@ class RecallInput(BaseModel):
 
 @tool(
     name="memory_recall",
+    min_role="viewer",
     description=(
         "Search your stored memory for relevant context. Use this when you "
         "need raw information to inform your thinking — not a polished "

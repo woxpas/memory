@@ -25,7 +25,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from woxpas_api.auth import tenant_id_dep
+from woxpas_api.auth import require_min_role, tenant_id_dep
 from woxpas_api.state import AppState, app_state
 
 log = structlog.get_logger(__name__)
@@ -182,7 +182,8 @@ async def get_conflict(
 
 
 @router.post("/conflicts/{conflict_id}/resolve",
-             response_model=ConflictResolutionResponse)
+             response_model=ConflictResolutionResponse,
+             dependencies=[Depends(require_min_role("member"))])
 async def resolve_conflict(
     conflict_id: UUID,
     body:        ResolveConflictRequest,

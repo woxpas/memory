@@ -31,6 +31,7 @@ class GetContextInput(BaseModel):
 
 @tool(
     name="resurface_get_context",
+    min_role="viewer",
     description=(
         "Call this ONCE at the start of every conversation. Returns "
         "everything you need to orient yourself: what the user is working "
@@ -70,6 +71,7 @@ class GetPatternsInput(BaseModel):
 
 @tool(
     name="resurface_get_patterns",
+    min_role="viewer",
     description=(
         "Call at session END or when the user asks 'what's changed?' or "
         "'anything I should know?'. Returns pattern signals the dreaming "
@@ -145,6 +147,7 @@ class GetPreferencesInput(BaseModel):
 
 @tool(
     name="resurface_get_preferences",
+    min_role="viewer",
     description=(
         "Call ONCE at session start (right after resurface_get_context). "
         "Returns how this user likes answers: short vs detailed, citation "
@@ -174,6 +177,7 @@ class GetToolSuggestionsInput(BaseModel):
 
 @tool(
     name="resurface_get_tool_suggestions",
+    min_role="viewer",
     description=(
         "Which Woxpas tools this user calls most often, ranked by "
         "frequency over the last 30 days. Use to prioritize — if the "

@@ -60,6 +60,7 @@ class AskInput(BaseModel):
 
 @tool(
     name="memory_ask",
+    min_role="viewer",
     description=(
         "Your primary tool for answering questions from stored memory. "
         "Call this when the user asks 'what do I know about X?' or 'tell "

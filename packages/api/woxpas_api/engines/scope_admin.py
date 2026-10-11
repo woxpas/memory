@@ -81,6 +81,8 @@ class ScopeAdminEngine:
         color:           str | None = None,
         icon:            str | None = None,
         embed:           bool = True,
+        visibility:      str = "team",
+        owner_member_id: UUID | None = None,
     ) -> CreateScopeResult:
         """Create (or upsert by slug) a scope. When embed=True (default)
         and there's text to embed (name + optional description), the
@@ -111,6 +113,8 @@ class ScopeAdminEngine:
                 parent_scope_id=parent_scope_id,
                 color=color,
                 icon=icon,
+                visibility=visibility,
+                owner_member_id=owner_member_id,
             )
 
         # 2. Embed + Qdrant upsert (best-effort; logs but doesn't roll

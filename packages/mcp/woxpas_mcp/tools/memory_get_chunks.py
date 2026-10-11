@@ -36,6 +36,7 @@ class GetChunksInput(BaseModel):
 
 @tool(
     name="memory_get_chunks",
+    min_role="viewer",
     description=(
         "Get full text for one or more chunks by ID. Use after memory_recall or memory_ask returned chunk IDs — this hydrates them to complete text. Batch up to 100 at once. Set context_window > 0 to get surrounding chunks for context."
         "memory_recall or memory_ask returned chunk_ids in a lean "

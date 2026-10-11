@@ -49,6 +49,12 @@ class RateLimited(ToolError):
     retriable = True
 
 
+class RoleDenied(ToolError):
+    """The bound member's role is below the tool's minimum (team memory,
+    Phase A3). Not retriable — the role must be changed by an admin."""
+    code = "role_denied"
+
+
 class ValidationFailed(ToolError):
     code = "validation_failed"
 

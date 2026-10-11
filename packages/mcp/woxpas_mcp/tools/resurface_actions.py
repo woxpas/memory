@@ -40,6 +40,7 @@ class GetPredictedActionsInput(BaseModel):
 
 @tool(
     name="resurface_get_predicted_actions",
+    min_role="viewer",
     description=(
         "What needs attention. Returns overdue tasks, open conflicts, "
         "dormant ideas, and unscoped documents found by the dreaming "
@@ -72,6 +73,7 @@ class GetPredictedQuestionsInput(BaseModel):
 
 @tool(
     name="resurface_get_predicted_questions",
+    min_role="viewer",
     description=(
         "Pre-cached answers from the dreaming worker. Empty when cloud "
         "is disallowed or nothing cached. Call at session start to check "
@@ -154,6 +156,7 @@ class ListPreparedActionsInput(BaseModel):
 
 @tool(
     name="resurface_list_prepared_actions",
+    min_role="viewer",
     description=(
         "List pending actions across all agents. Filter by status (drafted/approved/executed/rejected), agent, or kind. Default shows drafted + approved — still actionable. Use to surface what's waiting for review or execution."
         "(still actionable). Filter by agent_id, action_kind, or "

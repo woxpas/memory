@@ -73,6 +73,7 @@ chat history.
 | **Synthesis** | Streaming, **citation-verified** answers. The LLM cites source chunks inline; a deterministic verifier (lexical n-gram + cosine) checks each citation against the source span. No "LLM-as-judge." |
 | **Resurfacing** | A background "dreaming" worker that surfaces what matters — trending/fading/forgotten patterns, overdue tasks, open conflicts, dormant ideas — plus cross-agent preferences and prepared actions. |
 | **Sovereignty** | Encrypted at rest, permissively licensed dependency set, pluggable model backends (local llama.cpp / OpenAI-compatible / Anthropic), cross-platform, offline-first. |
+| **Team memory** (optional) | A tenant can be a shared team: many members, each with their own passphrase-wrapped copy of the one shared DEK, roles (viewer/member/admin/owner), per-member attribution and preferences, and private scopes. Enforced in `jwt` mode. A solo install is just a team of one. See [docs/GETTING_STARTED.md §13b](docs/GETTING_STARTED.md) and `docs/design/team-memory.md`. |
 
 ---
 
