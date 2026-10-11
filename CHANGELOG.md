@@ -58,6 +58,10 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   third-party libraries in `[tool.mypy.overrides]`.
 
 ### Fixed
+- **Docker image was missing `libmagic`**, so the detect stage mis-typed every
+  ingested document as `application/octet-stream`, the extract stage failed, and
+  nothing ever reached `indexed` (recall returned nothing). Added `libmagic1` to
+  the `Dockerfile`. Caught during a live MCP ingest→recall test.
 - The `woxpas-cli` no longer dumps a raw `asyncpg` traceback when it can't
   authenticate to or reach Postgres; it prints a clean, actionable message
   (wrong credentials vs. stack not running) and exits non-zero.
