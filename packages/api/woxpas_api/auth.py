@@ -211,10 +211,14 @@ async def _maybe_attribute_member(request: Request, tenant_id: UUID, subject: st
 
 def require_min_role(minimum: str) -> Any:
     """FastAPI dependency factory: 403 unless the acting member's role meets
-    `minimum` (viewer < member < admin < owner). A request with no member
-    context (dev / single_tenant_local / jwt without a resolved member) is
-    allowed — single-user installs are unaffected; use API_REQUIRE_MEMBERSHIP
-    to force a member context in jwt mode.
+    `minimum` (viewer < member < admin < owner).
+
+    Fail-closed in jwt mode: a request that did NOT resolve to a member (role
+    None) is DENIED on a gated route — a validly-signed token whose subject
+    isn't a member must not inherit full access just because membership
+    enforcement (API_REQUIRE_MEMBERSHIP) is off. The None=full-access exemption
+    applies ONLY to dev / single_tenant_local (loopback, single-user, no member
+    concept).
 
     Depend on this AFTER tenant_id_dep so the member/role is resolved first.
     """
@@ -222,6 +226,15 @@ def require_min_role(minimum: str) -> Any:
         request: Request, _tid: Annotated[UUID, Depends(tenant_id_dep)],
     ) -> None:
         role = current_member_role()
+        if role is None:
+            mode = request.app.state.api_settings.auth_mode
+            if mode == "jwt":
+                raise HTTPException(
+                    status.HTTP_403_FORBIDDEN,
+                    f"this action requires a team member (role {minimum}+); "
+                    "the token did not resolve to an active member",
+                )
+            return  # dev / single_tenant_local: single-user, no member gate
         if not role_allows(role, minimum):
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,

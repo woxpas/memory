@@ -36,12 +36,15 @@ from woxpas_core import CapturedBy, ContentRef, IngestEnvelope, SourceChannel
 from woxpas_pipeline.ingress import DuplicateDocument
 from woxpas_storage import SourceRepo
 
-from woxpas_api.auth import tenant_id_dep
+from woxpas_api.auth import require_min_role, tenant_id_dep
 from woxpas_api.state import AppState, app_state
 
 log = structlog.get_logger(__name__)
 
-router = APIRouter(tags=["ingest"])
+# Team memory (Phase A3): ingesting is a write — require member+ (all routes
+# here are writes, so gate at the router). Viewers and non-members are denied;
+# dev / single_tenant_local (no member) pass through unchanged.
+router = APIRouter(tags=["ingest"], dependencies=[Depends(require_min_role("member"))])
 
 
 def _get_state(request: Request) -> AppState:

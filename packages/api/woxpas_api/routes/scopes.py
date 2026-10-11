@@ -22,12 +22,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from woxpas_storage import current_member_id
 
-from woxpas_api.auth import tenant_id_dep
+from woxpas_api.auth import require_min_role, tenant_id_dep
 from woxpas_api.state import AppState, app_state
 
 log = structlog.get_logger(__name__)
 
-router = APIRouter(tags=["scopes"])
+# Team memory (Phase A3): all scope routes here mutate (create/assign/unassign) —
+# require member+. Dev / single_tenant_local (no member) pass through unchanged.
+router = APIRouter(tags=["scopes"], dependencies=[Depends(require_min_role("member"))])
 
 
 def _get_state(request: Request) -> AppState:

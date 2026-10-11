@@ -34,7 +34,7 @@ from woxpas_resurfacing import (
     UserPreferences,
 )
 
-from woxpas_api.auth import tenant_id_dep
+from woxpas_api.auth import require_min_role, tenant_id_dep
 from woxpas_api.state import AppState, app_state
 
 log = structlog.get_logger(__name__)
@@ -90,7 +90,8 @@ async def resurface_context(
         ) from e
 
 
-@router.post("/resurface/refresh-scores")
+@router.post("/resurface/refresh-scores",
+             dependencies=[Depends(require_min_role("member"))])
 async def resurface_refresh_scores(
     request:   Request,
     tenant_id: Annotated[UUID, Depends(tenant_id_dep)],
@@ -118,7 +119,8 @@ async def resurface_refresh_scores(
         ) from e
 
 
-@router.post("/resurface/observation", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/resurface/observation", status_code=status.HTTP_204_NO_CONTENT,
+             dependencies=[Depends(require_min_role("member"))])
 async def resurface_observation(
     body:      ObservationRequest,
     request:   Request,
@@ -261,7 +263,8 @@ async def resurface_predicted_questions(
 
 
 @router.post("/resurface/prepared-action", response_model=PreparedActionPostResponse,
-             status_code=status.HTTP_201_CREATED)
+             status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require_min_role("member"))])
 async def resurface_prepared_action_post(
     body:      PreparedActionRequest,
     request:   Request,
@@ -321,7 +324,8 @@ async def resurface_prepared_actions(
 
 
 @router.post("/resurface/prepared-action/{artifact_id}/approve",
-             response_model=PreparedActionItem)
+             response_model=PreparedActionItem,
+             dependencies=[Depends(require_min_role("member"))])
 async def resurface_prepared_action_approve(
     artifact_id: UUID,
     request:     Request,
@@ -350,7 +354,8 @@ async def resurface_prepared_action_approve(
 
 
 @router.post("/resurface/prepared-action/{artifact_id}/reject",
-             response_model=PreparedActionItem)
+             response_model=PreparedActionItem,
+             dependencies=[Depends(require_min_role("member"))])
 async def resurface_prepared_action_reject(
     artifact_id: UUID,
     body:        PreparedActionRejectRequest,
@@ -379,7 +384,8 @@ async def resurface_prepared_action_reject(
 
 
 @router.post("/resurface/prepared-action/{artifact_id}/mark-executed",
-             response_model=PreparedActionItem)
+             response_model=PreparedActionItem,
+             dependencies=[Depends(require_min_role("member"))])
 async def resurface_prepared_action_mark_executed(
     artifact_id: UUID,
     request:     Request,
@@ -426,7 +432,8 @@ class UpsertPersonaResponse(BaseModel):
     persona_tone: dict[str, Any] = Field(default_factory=dict)
 
 
-@router.post("/resurface/persona", response_model=UpsertPersonaResponse)
+@router.post("/resurface/persona", response_model=UpsertPersonaResponse,
+             dependencies=[Depends(require_min_role("member"))])
 async def resurface_upsert_persona(
     body:      UpsertPersonaRequest,
     request:   Request,
@@ -484,7 +491,8 @@ class RecordDecisionResponse(BaseModel):
 
 
 @router.post("/resurface/decision", response_model=RecordDecisionResponse,
-             status_code=status.HTTP_201_CREATED)
+             status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require_min_role("member"))])
 async def resurface_record_decision(
     body:      RecordDecisionRequest,
     request:   Request,

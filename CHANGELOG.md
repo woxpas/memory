@@ -88,6 +88,17 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   used a local model.
 
 ### Security
+- **Team-memory role gate now fails closed in jwt mode.** `require_min_role`
+  previously treated a request with no resolved member (role `None`) as full
+  access; in jwt mode with `API_REQUIRE_MEMBERSHIP` off (the default), a
+  validly-signed token whose subject isn't a member could reach the member-admin
+  routes. It now denies `None`-role requests on gated routes in jwt mode; the
+  `None`=allow exemption is limited to dev / single_tenant_local (loopback).
+- **Content-mutation API routes are now role-gated.** `ingest`, scope
+  create/assign/unassign, document archive/unarchive, conflict resolve, and the
+  resurface write routes now require `member+`, matching the MCP write tools (a
+  `viewer` could previously write through the HTTP API). Reads stay open to
+  viewers.
 - Hardened `.gitignore` to exclude model weights and HuggingFace caches at any
   depth (a stray multi-GB cache under `packages/` was otherwise un-ignored).
 
