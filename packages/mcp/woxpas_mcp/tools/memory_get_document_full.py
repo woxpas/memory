@@ -28,6 +28,7 @@ class GetDocumentFullInput(BaseModel):
 
 @tool(
     name="memory_get_document_full",
+    min_role="viewer",
     description=(
         "Get everything about one document: metadata, all chunks, and optionally the original content. Works on archived docs. Use when you need the complete source, not just a snippet."
         "decrypted canonical CDM payload + optional decrypted raw "

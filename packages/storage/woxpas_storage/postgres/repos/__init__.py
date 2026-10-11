@@ -12,6 +12,7 @@ from woxpas_storage.postgres.repos.extraction import (
     RelationRepo,
     TaskRepo,
 )
+from woxpas_storage.postgres.repos.members import MemberRepo
 from woxpas_storage.postgres.repos.pipeline_runs import PipelineRunRepo
 from woxpas_storage.postgres.repos.predicates import PredicateRepo
 from woxpas_storage.postgres.repos.scopes import DocScopeRepo, ScopeRepo
@@ -27,6 +28,7 @@ __all__ = [
     "EntityProfileFactRepo",
     "EntityRepo",
     "IdeaRepo",
+    "MemberRepo",
     "PipelineRunRepo",
     "PredicateRepo",
     "RelationRepo",

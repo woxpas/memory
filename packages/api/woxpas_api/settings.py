@@ -27,6 +27,12 @@ class ApiSettings(BaseSettings):
     #                            require a header in stricter modes.
     auth_mode: str = "dev"
 
+    # Team memory (Phase A3). When true, jwt mode REQUIRES the token's subject to
+    # resolve to an active team member — non-members get 401. Default false keeps
+    # existing single-tenant jwt deployments (and dev/single_tenant_local)
+    # working unchanged; turn it on once a tenant is set up as a team.
+    require_membership: bool = False
+
     # Limits
     max_upload_bytes: int = 50 * 1024 * 1024   # 50 MB per file at v0.1
     request_timeout_s: int = 60

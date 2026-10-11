@@ -6,6 +6,7 @@ so the API gateway can construct only what it needs (e.g., test runs may skip Qd
 
 from woxpas_storage.envelope import (
     FreshTenantSecrets,
+    MemberEnvelope,
     UnlockedTenant,
     WrappedDek,
     derive_kek,
@@ -18,10 +19,12 @@ from woxpas_storage.envelope import (
     unwrap_dek,
     verify_passphrase,
     wrap_dek,
+    wrap_dek_for_passphrase,
 )
 from woxpas_storage.health import aggregate_health
 from woxpas_storage.objstore import ObjectStore
 from woxpas_storage.postgres import (
+    ROLE_RANK,
     CanonicalBlockRepo,
     ChunkRepo,
     ConflictRepo,
@@ -30,6 +33,7 @@ from woxpas_storage.postgres import (
     EntityProfileFactRepo,
     EntityRepo,
     IdeaRepo,
+    MemberRepo,
     OutboxPublisher,
     OutboxRepo,
     PipelineRunRepo,
@@ -43,6 +47,11 @@ from woxpas_storage.postgres import (
     TaskRepo,
     TimelineRepo,
     compute_dedup_key,
+    current_member_id,
+    current_member_role,
+    role_allows,
+    set_current_member_id,
+    set_current_member_role,
 )
 from woxpas_storage.qdrant import (
     ChunkPoint,
@@ -60,6 +69,8 @@ from woxpas_storage.settings import (
 )
 
 __all__ = [
+    # objstore
+    "ROLE_RANK",
     "CanonicalBlockRepo",
     "ChunkPoint",
     "ChunkRepo",
@@ -72,7 +83,8 @@ __all__ = [
     # envelope
     "FreshTenantSecrets",
     "IdeaRepo",
-    # objstore
+    "MemberEnvelope",
+    "MemberRepo",
     "ObjectStore",
     "ObjectStoreSettings",
     "OutboxPublisher",
@@ -102,6 +114,8 @@ __all__ = [
     # health
     "aggregate_health",
     "compute_dedup_key",
+    "current_member_id",
+    "current_member_role",
     "derive_kek",
     "derive_kek_from_params",
     "generate_dek",
@@ -109,7 +123,11 @@ __all__ = [
     "init_tenant_secrets",
     "make_kdf_params",
     "needs_rehash",
+    "role_allows",
+    "set_current_member_id",
+    "set_current_member_role",
     "unwrap_dek",
     "verify_passphrase",
     "wrap_dek",
+    "wrap_dek_for_passphrase",
 ]

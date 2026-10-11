@@ -25,6 +25,7 @@ from woxpas_api.routes import (
     documents,
     health,
     ingest,
+    members,
     recall,
     resurface,
     scopes,
@@ -109,6 +110,7 @@ def create_app(api_settings: ApiSettings | None = None) -> FastAPI:
     app.include_router(scopes.router)
     app.include_router(documents.router)
     app.include_router(conflicts.router)
+    app.include_router(members.router)
 
     return app
 

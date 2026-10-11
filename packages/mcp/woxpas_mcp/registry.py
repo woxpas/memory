@@ -36,6 +36,13 @@ class ToolDef:
     input_model: type[BaseModel]
     handler:     Callable[..., Awaitable[Any]]
     """Async function: handler(*, ctx: ToolContext, input: <input_model>) → Any"""
+    min_role:    str = "member"
+    """Minimum team-member role to call this tool (team memory, Phase A3):
+    viewer < member < owner. DEFAULTS to 'member' so a tool that forgets to
+    declare is over-restricted (viewers can't call it) rather than leaking a
+    write — read-only tools must opt down to 'viewer' explicitly. Enforced at
+    the dispatch chokepoint in server.py; ignored when the server is bound to
+    no member (single-person install)."""
 
 
 _REGISTRY: dict[str, ToolDef] = {}
@@ -46,6 +53,7 @@ def tool(
     *,
     description: str,
     input_model: type[BaseModel],
+    min_role: str = "member",
 ) -> Callable[[_Handler], _Handler]:
     """Decorator that registers an async handler.
 
@@ -72,6 +80,7 @@ def tool(
             description=description,
             input_model=input_model,
             handler=fn,
+            min_role=min_role,
         )
         # inspect.iscoroutinefunction narrows fn to a bare coroutine-function
         # type above; re-assert the original _Handler bind for the caller.

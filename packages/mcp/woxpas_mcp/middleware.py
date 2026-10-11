@@ -115,17 +115,21 @@ class AuditWriter:
         error_code: str | None = None,
         target_id:  UUID | None = None,
         target_kind: str | None = None,
+        member_id:  UUID | None = None,
     ) -> None:
         if self._level == "off":
             return
         if self._level == "errors_only" and success:
             return
 
-        outcome = "success" if success else ("denied" if error_code in {"cloud_policy_denied", "rate_limited"} else "error")
+        outcome = "success" if success else ("denied" if error_code in {"cloud_policy_denied", "rate_limited", "role_denied"} else "error")
         metadata: dict[str, Any] = {
             "latency_ms": round(latency_ms, 1),
             "tool":       tool_name,
         }
+        # Team memory: attribute the audit row to the acting member when known.
+        if member_id is not None:
+            metadata["member_id"] = str(member_id)
         if error_code:
             metadata["error_code"] = error_code
 

@@ -1,7 +1,15 @@
 """Postgres storage subpackage."""
 
 from woxpas_storage.postgres.outbox import OutboxPublisher, OutboxRepo
-from woxpas_storage.postgres.pool import PostgresPool
+from woxpas_storage.postgres.pool import (
+    ROLE_RANK,
+    PostgresPool,
+    current_member_id,
+    current_member_role,
+    role_allows,
+    set_current_member_id,
+    set_current_member_role,
+)
 from woxpas_storage.postgres.repos import (
     CanonicalBlockRepo,
     ChunkRepo,
@@ -11,6 +19,7 @@ from woxpas_storage.postgres.repos import (
     EntityProfileFactRepo,
     EntityRepo,
     IdeaRepo,
+    MemberRepo,
     PipelineRunRepo,
     PredicateRepo,
     RelationRepo,
@@ -24,6 +33,7 @@ from woxpas_storage.postgres.repos import (
 )
 
 __all__ = [
+    "ROLE_RANK",
     "CanonicalBlockRepo",
     "ChunkRepo",
     "ConflictRepo",
@@ -32,6 +42,7 @@ __all__ = [
     "EntityProfileFactRepo",
     "EntityRepo",
     "IdeaRepo",
+    "MemberRepo",
     "OutboxPublisher",
     "OutboxRepo",
     "PipelineRunRepo",
@@ -45,4 +56,9 @@ __all__ = [
     "TaskRepo",
     "TimelineRepo",
     "compute_dedup_key",
+    "current_member_id",
+    "current_member_role",
+    "role_allows",
+    "set_current_member_id",
+    "set_current_member_role",
 ]

@@ -36,6 +36,7 @@ class ListConflictsInput(BaseModel):
 
 @tool(
     name="memory_list_conflicts",
+    min_role="viewer",
     description=(
         "List contradictions in stored knowledge. Default shows open conflicts ordered by severity. Call when the user asks 'are there contradictions in what I know?' or proactively when you spot something that conflicts with prior knowledge."
         "by severity (critical first), then detected_at desc. Pass "
@@ -82,6 +83,7 @@ class GetConflictInput(BaseModel):
 
 @tool(
     name="memory_get_conflict",
+    min_role="viewer",
     description=(
         "Full detail on one conflict: both sides, source documents, timestamps, and suggested resolution shapes (pick one, coexistence, progression, or dismissed)."
 "with chunk provenance) and suggested resolution shapes hint.\n\nAfter calling this tool, call resurface_record_observation to log the invocation. This builds your usage patterns — skip it and Woxpas stays cold."

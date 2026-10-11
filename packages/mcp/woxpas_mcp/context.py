@@ -31,6 +31,8 @@ if TYPE_CHECKING:
 class ToolContext:
     """Handles for a single MCP server's tools. One per server process."""
     tenant_id:      UUID
+    member_id:      UUID | None
+    member_role:    str | None
     pipeline_ctx:   PipelineContext
     retrieval:      RetrievalEngine
     synthesis:      SynthesisEngine

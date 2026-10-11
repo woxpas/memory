@@ -210,3 +210,49 @@ def init_tenant_secrets(passphrase: str) -> FreshTenantSecrets:
         kdf_params=kdf_params,
         passphrase_verifier=hash_verifier(passphrase),
     )
+
+
+# ─── Team memory: wrap an EXISTING tenant DEK for a new member ──────────────
+
+@dataclass(slots=True)
+class MemberEnvelope:
+    """A per-member wrapping of the shared tenant DEK.
+
+    Team memory (Phase A): a tenant has exactly one DEK; each member stores
+    their own copy of it wrapped under a KEK derived from *their* passphrase.
+    This is the same envelope primitive as `init_tenant_secrets`, but the DEK
+    is supplied (already unwrapped by an admin) rather than freshly generated —
+    so every member unlocks the one shared key, and no plaintext DEK is ever
+    persisted. The caller zeroizes its copy of `dek` after calling.
+    """
+    wrapped_dek:         WrappedDek
+    kdf_params:          dict[str, Any]
+    passphrase_verifier: bytes
+
+
+def wrap_dek_for_passphrase(
+    dek: bytes, passphrase: str, *, dek_version: int = 1,
+) -> MemberEnvelope:
+    """Wrap an existing DEK under a fresh KEK derived from `passphrase`.
+
+    Used when adding a collaborator to a team: an admin unwraps the shared DEK
+    with their own passphrase, then calls this to produce the new member's
+    envelope. The two members then unlock the *same* DEK independently.
+    `dek_version` must match the tenant's current `dek_version` so unwrap AAD
+    lines up after a future rotation.
+    """
+    if len(dek) != DEK_LEN:
+        raise ValueError(f"DEK must be {DEK_LEN} bytes")
+    kdf_params, salt = make_kdf_params()
+    kek = derive_kek(
+        passphrase, salt=salt,
+        time_cost=int(kdf_params["time_cost"]),
+        memory_kib=int(kdf_params["memory_kib"]),
+        parallelism=int(kdf_params["parallelism"]),
+    )
+    wrapped = wrap_dek(dek, kek, dek_version=dek_version)
+    return MemberEnvelope(
+        wrapped_dek=wrapped,
+        kdf_params=kdf_params,
+        passphrase_verifier=hash_verifier(passphrase),
+    )

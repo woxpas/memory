@@ -7,6 +7,21 @@ aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Team memory (multi-member tenants).** A tenant can now be a shared team:
+  many members, each with their own passphrase-wrapped copy of the one shared
+  DEK (no plaintext key ever persisted), roles (`viewer`/`member`/`admin`/
+  `owner`), per-member attribution (`captured_by_member_id` / `actor_member_id`
+  on documents, observations, prepared actions, and audit rows), per-member
+  preferences & "self" identity, and private scopes (owner-only, RLS-enforced).
+  New CLI: `add-member` / `list-members` / `remove-member`, and
+  `create-scope --private`. New API: `GET/PATCH/DELETE /members`. New env:
+  `WOXPAS_MCP_MEMBER_ID` (bind an MCP server to a member) and
+  `API_REQUIRE_MEMBERSHIP` (reject non-member tokens in jwt mode). Role
+  enforcement and attribution apply in `jwt` mode; a solo install is a team of
+  one and behaves exactly as before. Migrations 032–035, 037. See
+  `docs/GETTING_STARTED.md` §13b and `docs/design/team-memory.md` (with
+  follow-up plans `me-resolution.md`, `private-content.md`, `dek-rotation.md`).
+  Verified live end-to-end over the HTTP API (jwt) and the MCP stdio server.
 - Open-source release scaffolding: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
   `NOTICE`, issue/PR templates, and a GitHub Actions CI workflow (lint + type
   check).

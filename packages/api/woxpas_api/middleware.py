@@ -74,6 +74,13 @@ class AuditMiddleware(BaseHTTPMiddleware):
             "status":     response.status_code,
             "latency_ms": round(ms, 1),
         }
+        # Team memory: attribute to the acting member when auth resolved one.
+        # Read from request.state (set in auth) rather than a ContextVar —
+        # Starlette runs this middleware in a task where downstream ContextVar
+        # writes may not be visible, but request.state always is.
+        member_for_audit = getattr(request.state, "member_id_for_audit", None)
+        if member_for_audit is not None:
+            metadata["member_id"] = str(member_for_audit)
 
         # Pull pool from app state. Schema: audit_log(tenant_id, actor,
         # actor_kind, action, target_kind?, target_id?, outcome, metadata).

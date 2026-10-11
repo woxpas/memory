@@ -95,12 +95,15 @@ class PatternDetector:
             if not obs:
                 # Cold tenant — clear or leave defaults; either way
                 # ensure a row exists with default values.
+                # Dreaming runs with no member context → writes the team-default
+                # row (member_id NULL). One conflict target (migration 034's
+                # COALESCE index) covers both member and default rows.
                 await conn.execute(
                     """
                     INSERT INTO resurface_user_preferences (tenant_id)
                     VALUES ($1)
-                    ON CONFLICT (tenant_id) DO UPDATE SET
-                        updated_at = now()
+                    ON CONFLICT (tenant_id, COALESCE(member_id, '00000000-0000-0000-0000-000000000000'::uuid))
+                    DO UPDATE SET updated_at = now()
                     """,
                     tenant_id,
                 )
@@ -143,7 +146,8 @@ class PatternDetector:
                     updated_at
                 )
                 VALUES ($1, $2, $3, now())
-                ON CONFLICT (tenant_id) DO UPDATE SET
+                ON CONFLICT (tenant_id, COALESCE(member_id, '00000000-0000-0000-0000-000000000000'::uuid))
+                DO UPDATE SET
                     answer_length_preference = EXCLUDED.answer_length_preference,
                     tool_use_preferences     = EXCLUDED.tool_use_preferences,
                     updated_at               = now()

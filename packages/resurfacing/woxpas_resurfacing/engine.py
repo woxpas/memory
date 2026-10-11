@@ -22,6 +22,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import structlog
+from woxpas_storage import current_member_id
 
 from woxpas_resurfacing.observations import PatternDetector
 from woxpas_resurfacing.opportunities import OpportunityDetector
@@ -54,6 +55,11 @@ from woxpas_resurfacing.types import (
 )
 
 log = structlog.get_logger(__name__)
+
+# Team memory (Phase A2b): the team-default preferences row carries member_id
+# NULL. A fixed sentinel lets one upsert target cover both member and default
+# rows (see migration 034's COALESCE unique index).
+_PREFS_DEFAULT_SENTINEL = "00000000-0000-0000-0000-000000000000"
 
 
 # Tunables for Phase 5a.1
@@ -582,11 +588,16 @@ class ResurfaceEngine:
             )
 
     async def get_preferences(
-        self, *, tenant_id: UUID,
+        self, *, tenant_id: UUID, member_id: UUID | None = None,
     ) -> UserPreferences:
         """Read the live preferences snapshot. Falls back to defaults
         when no row exists yet (cold tenant). The dreaming worker keeps
-        this fresh; agents read here on every conversational turn."""
+        this fresh; agents read here on every conversational turn.
+
+        Team memory (Phase A2b): returns the acting member's profile if they
+        have one, else the team-default (member_id NULL) row. `member_id`
+        defaults to the ambient acting member (set by auth / MCP dispatch)."""
+        eff_member = member_id if member_id is not None else current_member_id()
         async with self._pool.tenant_session(tenant_id) as conn:
             row = await conn.fetchrow(
                 """
@@ -595,8 +606,11 @@ class ResurfaceEngine:
                        surfacing_aggressiveness, updated_at
                   FROM resurface_user_preferences
                  WHERE tenant_id = $1
+                   AND (member_id IS NOT DISTINCT FROM $2 OR member_id IS NULL)
+                 ORDER BY (member_id IS NOT NULL) DESC
+                 LIMIT 1
                 """,
-                tenant_id,
+                tenant_id, eff_member,
             )
 
             obs_count = await conn.fetchval(
@@ -690,6 +704,7 @@ class ResurfaceEngine:
 
     async def upsert_persona(
         self, *, tenant_id: UUID, persona_patch: dict[str, Any],
+        member_id: UUID | None = None,
     ) -> dict[str, Any]:
         """Deep-merge `persona_patch` into resurface_user_preferences.persona_tone.
 
@@ -709,29 +724,33 @@ class ResurfaceEngine:
               'per_relationship': {'<sarah-uuid>': {'email': {...}}}
             })
         """
+        eff_member = member_id if member_id is not None else current_member_id()
         async with self._pool.tenant_session(tenant_id) as conn:
-            # Read current; deep-merge in Python; write back. One-shot
-            # is acceptable because resurface_user_preferences has at
-            # most one row per tenant and this isn't a hot path.
+            # Read current (this member's row); deep-merge in Python; write back.
+            # One-shot is acceptable because there is at most one row per
+            # (tenant, member) and this isn't a hot path.
             row = await conn.fetchrow(
                 "SELECT persona_tone::text AS p "
-                " FROM resurface_user_preferences WHERE tenant_id = $1",
-                tenant_id,
+                " FROM resurface_user_preferences "
+                " WHERE tenant_id = $1 AND member_id IS NOT DISTINCT FROM $2",
+                tenant_id, eff_member,
             )
             import json as _json
             current: dict[str, Any] = _json.loads(row["p"]) if row else {}
 
             merged = _deep_merge(current, persona_patch)
 
+            # One conflict target for both member and team-default rows (the
+            # COALESCE unique index from migration 034).
             await conn.execute(
                 """
-                INSERT INTO resurface_user_preferences (tenant_id, persona_tone, updated_at)
-                VALUES ($1, $2::jsonb, now())
-                ON CONFLICT (tenant_id) DO UPDATE SET
+                INSERT INTO resurface_user_preferences (tenant_id, member_id, persona_tone, updated_at)
+                VALUES ($1, $2, $3::jsonb, now())
+                ON CONFLICT (tenant_id, COALESCE(member_id, $4::uuid)) DO UPDATE SET
                     persona_tone = EXCLUDED.persona_tone,
                     updated_at   = now()
                 """,
-                tenant_id, merged,
+                tenant_id, eff_member, merged, _PREFS_DEFAULT_SENTINEL,
             )
         log.info("resurface.upsert_persona.done",
                  tenant_id=str(tenant_id),

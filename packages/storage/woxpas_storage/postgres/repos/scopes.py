@@ -36,12 +36,18 @@ class ScopeRepo:
         parent_scope_id: UUID | None = None,
         color: str | None = None,
         icon: str | None = None,
+        visibility: str = "team",
+        owner_member_id: UUID | None = None,
     ) -> UUID:
+        # Team memory (Phase A4): a 'private' scope is visible only to its
+        # owner_member_id (+ admins). ON CONFLICT does NOT change visibility or
+        # owner — re-creating a slug never silently flips a scope's privacy.
         row = await self._conn.fetchrow(
             """
             INSERT INTO scopes (
-              tenant_id, name, slug, description, parent_scope_id, color, icon
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+              tenant_id, name, slug, description, parent_scope_id, color, icon,
+              visibility, owner_member_id
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ON CONFLICT (tenant_id, slug) DO UPDATE
               SET name = EXCLUDED.name,
                   description = COALESCE(EXCLUDED.description, scopes.description),
@@ -49,7 +55,7 @@ class ScopeRepo:
             RETURNING scope_id
             """,
             tenant_id, name, slug or _slugify(name), description,
-            parent_scope_id, color, icon,
+            parent_scope_id, color, icon, visibility, owner_member_id,
         )
         return cast("UUID", row["scope_id"])
 

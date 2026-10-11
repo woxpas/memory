@@ -40,7 +40,10 @@ See [tools.md](tools.md) for the full inventory + when to use each.
 
 ## Architecture
 
-Single tenant per server process. Stdio transport (default) or HTTP/SSE
+Single tenant per server process (bound via `WOXPAS_MCP_TENANT_ID`). For team
+memory, also bind the acting member with `WOXPAS_MCP_MEMBER_ID` — writes are then
+attributed to that member and tools above their role are refused
+(`role_denied`). See GETTING_STARTED §13b. Stdio transport (default) or HTTP/SSE
 (via `WOXPAS_MCP_TRANSPORT=http`). All tool handlers run
 in-process against shared engines (RetrievalEngine, SynthesisEngine,
 ResurfaceEngine, ScopeAdminEngine, DocumentAdminEngine,

@@ -37,6 +37,7 @@ layer that any MCP agent can talk to. Every step explains *what* it does and
 11. [Recall and ask](#11-recall-and-ask)
 12. [Connect an MCP agent](#12-connect-an-mcp-agent)
 13. [Day-2 operations](#13-day-2-operations)
+13b. [Team memory (multiple collaborators)](#13b-team-memory-multiple-collaborators)
 14. [Running the tests](#14-running-the-tests)
 15. [Troubleshooting](#15-troubleshooting)
 16. [Toward a networked / cloud deployment](#16-toward-a-networked--cloud-deployment)
@@ -221,8 +222,9 @@ task/conflict graph, timeline + outbox + audit, and the resurfacing layer.
 
 ## 7. Bootstrap your tenant
 
-A **tenant** is your isolated memory space (one per person on a local install;
-the schema supports many for the cloud path). Bootstrapping generates your
+A **tenant** is your isolated memory space (one per person on a local install,
+or a shared **team** of several members — see §13b; the schema supports many
+tenants for the cloud path). Bootstrapping generates your
 data-encryption key (DEK), wraps it under a passphrase-derived KEK, and seeds a
 default file source + your "self" entity.
 
@@ -515,6 +517,85 @@ uv run woxpas-cli llm-test --model qwen2.5-1.5b-instruct-q4km --prompt "ping"
 HTTP (`GET /conflicts`, `GET /conflicts/{id}`, `POST /conflicts/{id}/resolve`) or
 via the `memory_list_conflicts` / `memory_get_conflict` / `memory_resolve_conflict`
 MCP tools. Resolution shapes: `pick`, `coexistence`, `progression`, `dismissed`.
+
+---
+
+## 13b. Team memory (multiple collaborators)
+
+By default a tenant is one person's memory. A tenant can also be a **team** —
+several people sharing one encrypted memory, each with their own identity, role,
+and attribution. A single-person install is just a team of one, so nothing below
+is required for solo use.
+
+**Model.** The tenant is the team. It still holds exactly one data-encryption
+key (DEK); each member stores their own copy of it, wrapped under their own
+passphrase (same envelope as a solo tenant, applied per member). Every member
+unlocks the one shared DEK. Design details: `docs/design/team-memory.md`.
+
+**Add members** (an existing member authorizes it — they unlock the shared DEK,
+and it is re-wrapped under the new member's passphrase):
+
+```bash
+uv run woxpas-cli add-member   --tenant-id <t> --display-name "Ada" --role member \
+                               --external-subject ada@example.com
+uv run woxpas-cli list-members --tenant-id <t>
+uv run woxpas-cli remove-member --tenant-id <t> --member <member_id>
+```
+
+**Roles** (each inherits the ones below it):
+
+| Role | Can |
+|---|---|
+| `viewer` | read only (recall, ask, get-context) |
+| `member` | read + write (ingest, scopes, conflicts, personas, prepared actions) |
+| `admin` | the above + manage members (list / change role / remove) |
+| `owner` | everything, incl. recovery; a team always keeps ≥1 active owner |
+
+**Enforcement requires `jwt` auth mode.** Roles and member attribution only
+apply when the API resolves a member from a signed token:
+
+- Set `API_AUTH_MODE=jwt` and configure `WOXPAS_JWT_PUBLIC_KEY` / `_AUDIENCE` /
+  `_ISSUER` (see §16). The token carries `woxpas_tenant_id` = the team and `sub`
+  = the member's `external_subject`.
+- **Set `API_REQUIRE_MEMBERSHIP=true` for any real team** — it rejects tokens
+  whose subject isn't an active member (401). Without it, a valid token that
+  doesn't map to a member is treated as having no member context.
+- `dev` / `single_tenant_local` modes have no member concept (loopback,
+  single-user) and are unaffected — attribution stays empty, gates are open.
+
+**MCP (per-member servers).** Each collaborator runs their own MCP server bound
+to the shared tenant and their member id:
+
+```json
+"env": {
+  "WOXPAS_MCP_TENANT_ID": "<team tenant uuid>",
+  "WOXPAS_MCP_MEMBER_ID": "<that member's member_id>",
+  "...": "db + dek as usual"
+}
+```
+
+The server validates the member is active at startup (fails closed), attributes
+every write to them, and refuses tools above their role (`role_denied`). Note:
+the member's **role is read once at startup** — restart the server after an
+admin changes it.
+
+**Attribution.** Documents (`captured_by_member_id`), agent observations,
+prepared actions, and `audit_log` rows record the acting member automatically.
+
+**Private scopes.** A scope can be `private` to its owner (visible only to them
+and admins). The scope and its membership are hidden from other members via RLS;
+note this hides the *grouping*, not yet the underlying document content (see
+`docs/design/private-content.md`).
+
+```bash
+# a member creates a private scope via the API (jwt mode resolves the owner), or:
+uv run woxpas-cli create-scope --tenant-id <t> --name "Ada private" \
+                               --private --owner-member <member_id>
+```
+
+**Per-member preferences & identity.** Each member has their own answer-length /
+tone / tool-use profile and their own "self" entity; a team-default profile
+(shared) is the fallback.
 
 ---
 

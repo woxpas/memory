@@ -21,11 +21,19 @@ from __future__ import annotations
 
 import os
 from contextvars import ContextVar
+from typing import Annotated, Any
 from uuid import UUID
 
 import jwt
 import structlog
-from fastapi import HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
+from woxpas_storage import (
+    MemberRepo,
+    current_member_role,
+    role_allows,
+    set_current_member_id,
+    set_current_member_role,
+)
 
 from woxpas_api.settings import JwtSettings
 
@@ -152,4 +160,71 @@ async def _jwt_resolve(request: Request) -> UUID:
         raise HTTPException(401, f"invalid tenant claim: {e}") from e
     _tenant_var.set(tid)
     request.state.tenant_id_for_audit = tid
+
+    # Team memory (Phase A2): best-effort member attribution. If the 'sub' claim
+    # maps to an active member of this team, record them for attribution; else
+    # leave unattributed (NULL). Non-breaking — membership is NOT required here
+    # (hard role enforcement is a later sub-phase), and a lookup failure never
+    # breaks auth (Pillar 3: liveness). `sub` is only a distinct user when the
+    # tenant came from the woxpas_tenant_id claim; a legacy sub==tenant token
+    # simply resolves no member.
+    subject = claims.get("sub")
+    resolved = False
+    if subject and subject != raw:
+        resolved = await _maybe_attribute_member(request, tid, subject)
+
+    # Team memory (Phase A3): hard membership gate. When enabled, a token whose
+    # subject is not an active member of this team is rejected. Off by default
+    # (A2 stays non-breaking); teams opt in via API_REQUIRE_MEMBERSHIP=true.
+    if request.app.state.api_settings.require_membership and not resolved:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "not an active member of this team",
+        )
     return tid
+
+
+async def _maybe_attribute_member(request: Request, tenant_id: UUID, subject: str) -> bool:
+    """Resolve a JWT subject to an active team member and record it (id + role)
+    for attribution and role gating (team memory). Best-effort: swallows any
+    failure. Returns True iff an active member was resolved."""
+    app_state = getattr(request.app.state, "app", None)
+    if app_state is None:
+        return False
+    try:
+        pool = app_state.ctx.pool
+        async with pool.tenant_session(tenant_id) as conn:
+            member = await MemberRepo(conn).get_by_subject(tenant_id, subject)
+    except Exception as e:  # attribution must never break auth
+        log.warning("auth.member_resolve_failed",
+                    error_class=type(e).__name__, error=str(e)[:200])
+        return False
+    if member and member.get("status") == "active":
+        set_current_member_id(member["member_id"])
+        set_current_member_role(member.get("role"))
+        request.state.member_id_for_audit = member["member_id"]
+        return True
+    return False
+
+
+# ─── role gate (team memory, Phase A3) ───────────────────────────────────────
+
+def require_min_role(minimum: str) -> Any:
+    """FastAPI dependency factory: 403 unless the acting member's role meets
+    `minimum` (viewer < member < admin < owner). A request with no member
+    context (dev / single_tenant_local / jwt without a resolved member) is
+    allowed — single-user installs are unaffected; use API_REQUIRE_MEMBERSHIP
+    to force a member context in jwt mode.
+
+    Depend on this AFTER tenant_id_dep so the member/role is resolved first.
+    """
+    async def _dep(
+        request: Request, _tid: Annotated[UUID, Depends(tenant_id_dep)],
+    ) -> None:
+        role = current_member_role()
+        if not role_allows(role, minimum):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                f"role {role!r} is not permitted here (requires {minimum}+)",
+            )
+    return _dep

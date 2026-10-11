@@ -20,6 +20,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
+from woxpas_storage import current_member_id
 
 from woxpas_api.auth import tenant_id_dep
 from woxpas_api.state import AppState, app_state
@@ -49,6 +50,10 @@ class CreateScopeRequest(BaseModel):
     """When False, the scope is created WITHOUT a Qdrant embedding,
     making it invisible to auto-assignment. Use only for catch-all
     scopes like 'Inbox' that should never auto-claim docs."""
+    visibility:      str = Field(default="team", pattern="^(team|private)$")
+    """Team memory (Phase A4): 'private' makes the scope visible only to the
+    acting member (its owner) plus admins. Requires a resolved member
+    (jwt mode with a member); a private scope cannot be created without one."""
 
 
 class CreateScopeResponse(BaseModel):
@@ -97,6 +102,17 @@ async def create_scope(
     need a new project home for an agent-saved capture and no existing
     scope matches. Pair with `assign_to_scope` to attach the doc."""
     state = _get_state(request)
+    owner_member_id: UUID | None = None
+    if body.visibility == "private":
+        owner_member_id = current_member_id()
+        if owner_member_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="a private scope needs an owning member, but none was "
+                       "resolved. This is expected in dev / single_tenant_local "
+                       "mode (no member context) — create a 'team' scope instead, "
+                       "or use jwt mode where the token maps to a member.",
+            )
     try:
         result = await state.scope_admin.create_scope(
             tenant_id=tenant_id,
@@ -107,6 +123,8 @@ async def create_scope(
             color=body.color,
             icon=body.icon,
             embed=body.embed,
+            visibility=body.visibility,
+            owner_member_id=owner_member_id,
         )
         return CreateScopeResponse(
             scope_id=result.scope_id,

@@ -27,11 +27,12 @@ from mcp import types as mcp_types
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from pydantic import ValidationError
+from woxpas_storage import role_allows, set_current_member_id, set_current_member_role
 
 # Import the tools package so registry decorators fire.
 import woxpas_mcp.tools  # noqa: F401
 from woxpas_mcp.context import ToolContext
-from woxpas_mcp.errors import StructuredError, ToolError
+from woxpas_mcp.errors import RoleDenied, StructuredError, ToolError
 from woxpas_mcp.middleware import AuditWriter, RateLimiter, emit_latency
 from woxpas_mcp.registry import all_tools, get_tool
 from woxpas_mcp.settings import McpSettings
@@ -85,6 +86,21 @@ class WoxpasMcpServer:
         from woxpas_synthesis import CitationVerifier, SynthesisEngine
 
         pctx = await PipelineContext.construct()
+
+        # Team memory (Phase A3): if this server is bound to a member, validate
+        # it's an active member of the tenant and load its role. Fail closed —
+        # a stale/removed WOXPAS_MCP_MEMBER_ID must not act.
+        member_role: str | None = None
+        if settings.member_id is not None:
+            from woxpas_storage import MemberRepo
+            async with pctx.pool.tenant_session(settings.tenant_id) as conn:
+                m = await MemberRepo(conn).get(settings.tenant_id, settings.member_id)
+            if m is None or m.get("status") != "active":
+                raise RuntimeError(
+                    f"WOXPAS_MCP_MEMBER_ID {settings.member_id} is not an active "
+                    f"member of tenant {settings.tenant_id} — refusing to start"
+                )
+            member_role = m["role"]
 
         # Bootstrap storage — idempotent, creates buckets + collections if missing.
         await pctx.qdrant.bootstrap()
@@ -140,6 +156,8 @@ class WoxpasMcpServer:
 
         ctx = ToolContext(
             tenant_id=settings.tenant_id,
+            member_id=settings.member_id,
+            member_role=member_role,
             pipeline_ctx=pctx,
             retrieval=retrieval,
             synthesis=synthesis,
@@ -152,7 +170,16 @@ class WoxpasMcpServer:
         )
         log.info("mcp.server.constructed",
                  tenant_id=str(settings.tenant_id),
+                 member_id=str(settings.member_id) if settings.member_id else None,
+                 member_role=member_role,
                  tools_registered=len(all_tools()))
+        if settings.member_id is not None:
+            # Operator note (team memory): the member's role is read ONCE at
+            # startup. If an admin changes this member's role while the server
+            # is running, the change takes effect only after a restart.
+            log.warning("mcp.server.member_role_fixed_for_session",
+                        member_id=str(settings.member_id), role=member_role,
+                        note="role is bound at startup; restart to pick up role changes")
         return cls(settings=settings, ctx=ctx)
 
     async def serve(self) -> None:
@@ -222,6 +249,20 @@ class WoxpasMcpServer:
                     error_code = "not_found"
                     raise RuntimeError(err.to_text())
 
+                # 2b. Role gate (team memory, Phase A3). When this server is
+                # bound to a member, deny tools above their role. A server bound
+                # to no member (single-person install) has member_role None,
+                # which role_allows() treats as full access.
+                if not role_allows(self._ctx.member_role, t.min_role):
+                    role_err = RoleDenied(
+                        f"tool {name!r} requires role {t.min_role}+ "
+                        f"(you are {self._ctx.member_role!r})",
+                    )
+                    error_code = role_err.code
+                    raise RuntimeError(
+                        StructuredError.from_exception(role_err).to_text()
+                    ) from role_err
+
                 # 3. Input validation
                 try:
                     input_obj = t.input_model.model_validate(arguments or {})
@@ -235,6 +276,11 @@ class WoxpasMcpServer:
                     raise RuntimeError(err.to_text()) from e
 
                 # 4. Handler invocation
+                # Team memory (Phase A2/A3): bind the acting member + role for
+                # this call so tenant_session() attributes writes (NULL when
+                # unset) and any role-aware logic sees the same context.
+                set_current_member_id(self._ctx.member_id)
+                set_current_member_role(self._ctx.member_role)
                 try:
                     result = await t.handler(ctx=self._ctx, input=input_obj)
                 except Exception as e:
@@ -264,6 +310,7 @@ class WoxpasMcpServer:
                         latency_ms=ms,
                         success=success,
                         error_code=error_code,
+                        member_id=self._ctx.member_id,
                     )
                 except Exception:  # noqa: S110  # audit-write failure must never break a tool call; the writer logs internally
                     pass

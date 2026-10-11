@@ -31,11 +31,17 @@ from uuid import UUID, uuid4
 import asyncpg
 import structlog
 from woxpas_storage import (
+    MemberRepo,
     PostgresPool,
     ScopeRepo,
     SourceRepo,
     StorageSettings,
+    WrappedDek,
+    derive_kek_from_params,
     init_tenant_secrets,
+    unwrap_dek,
+    verify_passphrase,
+    wrap_dek_for_passphrase,
 )
 
 log = structlog.get_logger(__name__)
@@ -1108,6 +1114,198 @@ async def cmd_init_tenant(args: argparse.Namespace) -> int:
     return 0
 
 
+# ─── team members (team memory, Phase A) ────────────────────────────────────
+
+async def _unlock_tenant_dek_via_member(
+    conn: asyncpg.Connection, tenant_id: UUID, passphrase: str,
+) -> bytes:
+    """Unwrap the shared tenant DEK using any active member whose passphrase
+    matches. Returns the plaintext DEK (caller zeroizes). Raises SystemExit on
+    a wrong passphrase — never leaks which member matched.
+
+    Pillar 3: we verify against the PHC verifier first (cheap) before the
+    expensive KEK derivation, and the DEK never touches disk.
+    """
+    repo = MemberRepo(conn)
+    # Current DEK version for this tenant — a member whose envelope is behind it
+    # has a stale key (post-rotation) and must NOT be handed the old DEK.
+    tenant_dek_version = await conn.fetchval(
+        "SELECT dek_version FROM tenants WHERE tenant_id = $1", tenant_id,
+    )
+    # find_active_envelopes already excludes removed / suspended / needs_rekey
+    # members, so only 'active' envelopes are considered here (Phase A5).
+    envelopes = await repo.find_active_envelopes(tenant_id)
+    if not envelopes:
+        raise SystemExit(
+            "no active members for this tenant — run 'woxpas-cli init-tenant' first"
+        )
+    for env in envelopes:
+        if not verify_passphrase(env["passphrase_verifier"], passphrase):
+            continue
+        # Fail-safe (Phase A5): a matching passphrase on a stale envelope must
+        # never yield the (old) DEK — the member has to re-key first.
+        if tenant_dek_version is not None and env["dek_version"] < tenant_dek_version:
+            raise SystemExit(
+                "your key is out of date (the tenant DEK was rotated) — "
+                "an admin must re-key you with 'woxpas-cli add-member'"
+            )
+        kek = derive_kek_from_params(passphrase, dict(env["kdf_params"]))
+        wrapped = WrappedDek(
+            encrypted_dek=env["encrypted_dek"],
+            iv=env["encrypted_dek_iv"],
+            tag=env["encrypted_dek_tag"],
+            kdf_params={},
+            dek_version=env["dek_version"],
+        )
+        return unwrap_dek(wrapped, kek)
+    raise SystemExit("passphrase did not match any active member of this tenant")
+
+
+async def cmd_add_member(args: argparse.Namespace) -> int:
+    """Add a collaborator to a team. An existing member unlocks the shared DEK
+    with THEIR passphrase; we re-wrap that same DEK under the NEW member's
+    passphrase. The plaintext DEK never leaves this process."""
+    settings = StorageSettings()
+    tenant_id = UUID(args.tenant_id)
+
+    print("\n[woxpas-cli] An existing member must authorize adding a collaborator.")
+    admin_pass = _read_passphrase(prompt="  Existing member passphrase: ", confirm=False)
+    print("\n[woxpas-cli] Set the NEW member's passphrase (they can change it later).")
+    new_pass = _read_passphrase(prompt="  New member passphrase: ", confirm=True)
+
+    pool = await PostgresPool.from_settings(settings.postgres)
+    dek = b""
+    try:
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "SELECT set_config('app.tenant_id', $1, true)", str(tenant_id),
+                )
+                repo = MemberRepo(conn)
+
+                print("\n[woxpas-cli] deriving KEK to unlock the shared DEK (Argon2id)…")
+                dek = await _unlock_tenant_dek_via_member(conn, tenant_id, admin_pass)
+
+                # Re-wrap the SAME dek under the new member's passphrase, stamped
+                # with the tenant's CURRENT dek_version — so a member added after
+                # a rotation isn't immediately rejected by the unlock version
+                # guard (Phase A5 re-key flow).
+                tenant_dek_version = await conn.fetchval(
+                    "SELECT dek_version FROM tenants WHERE tenant_id = $1", tenant_id,
+                )
+                print("[woxpas-cli] wrapping the shared DEK for the new member (Argon2id)…")
+                env = wrap_dek_for_passphrase(
+                    dek, new_pass, dek_version=int(tenant_dek_version or 1),
+                )
+
+                # Give the member their own self-entity (identity_card is already
+                # entity-parameterized, so no mechanism change needed).
+                self_entity_id = uuid4()
+                await conn.execute(
+                    """
+                    INSERT INTO entities (
+                      entity_id, tenant_id, canonical_name, type, profile,
+                      first_mentioned_at
+                    ) VALUES ($1, $2, $3, 'person', $4::jsonb, now())
+                    """,
+                    self_entity_id, tenant_id, args.display_name,
+                    {"is_self": True, "seeded_at_member_add": True},
+                )
+
+                member_id = await repo.create(
+                    tenant_id,
+                    display_name=args.display_name,
+                    passphrase_verifier=env.passphrase_verifier,
+                    kdf_params=env.kdf_params,
+                    encrypted_dek=env.wrapped_dek.encrypted_dek,
+                    encrypted_dek_iv=env.wrapped_dek.iv,
+                    encrypted_dek_tag=env.wrapped_dek.tag,
+                    dek_version=env.wrapped_dek.dek_version,
+                    role=args.role,
+                    external_subject=args.external_subject,
+                    self_entity_id=self_entity_id,
+                )
+    finally:
+        # Best-effort zeroize of the unwrapped DEK.
+        if dek:
+            dek = b"\x00" * len(dek)
+        await pool.close()
+
+    print("\n[woxpas-cli] member added.")
+    _print_kv({
+        "member_id":      member_id,
+        "display_name":   args.display_name,
+        "role":           args.role,
+        "self_entity_id": self_entity_id,
+        "external_subject": args.external_subject or "(none — set when wiring an IdP/JWT)",
+    })
+    return 0
+
+
+async def cmd_list_members(args: argparse.Namespace) -> int:
+    settings = StorageSettings()
+    tenant_id = UUID(args.tenant_id)
+    pool = await PostgresPool.from_settings(settings.postgres)
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "SELECT set_config('app.tenant_id', $1, true)", str(tenant_id),
+            )
+            members = await MemberRepo(conn).list_members(
+                tenant_id, include_removed=args.include_removed,
+            )
+    finally:
+        await pool.close()
+
+    if not members:
+        print("[woxpas-cli] no members found for this tenant.")
+        return 0
+    print(f"\n[woxpas-cli] {len(members)} member(s):\n")
+    for m in members:
+        subj = m["external_subject"] or "-"
+        print(f"  {m['role']:<7} {m['status']:<9} {m['member_id']}  "
+              f"{m['display_name']}  (sub: {subj})")
+    print()
+    return 0
+
+
+async def cmd_remove_member(args: argparse.Namespace) -> int:
+    """Revoke a member (status='removed') so their passphrase can no longer
+    unlock the DEK. Forward secrecy against an already-copied envelope requires
+    DEK rotation (a later sub-phase); this revokes access from here on.
+    Refuses to remove the last active owner."""
+    settings = StorageSettings()
+    tenant_id = UUID(args.tenant_id)
+    member_id = UUID(args.member)
+    pool = await PostgresPool.from_settings(settings.postgres)
+    try:
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "SELECT set_config('app.tenant_id', $1, true)", str(tenant_id),
+                )
+                repo = MemberRepo(conn)
+                target = await repo.get(tenant_id, member_id)
+                if target is None:
+                    raise SystemExit(f"no such member {member_id} in this tenant")
+                if target["role"] == "owner" and await repo.count_active_owners(tenant_id) <= 1:
+                    raise SystemExit(
+                        "refusing to remove the last active owner — promote another "
+                        "member to owner first (woxpas-cli set-role)"
+                    )
+                ok = await repo.set_status(tenant_id, member_id, "removed")
+                if not ok:
+                    raise SystemExit("member removal affected no rows")
+    finally:
+        await pool.close()
+
+    print(f"[woxpas-cli] member {member_id} removed (access revoked).")
+    if not args.no_rotate_reminder:
+        print("  Note: for forward secrecy against a copied envelope, rotate the "
+              "tenant DEK (planned sub-phase A5).")
+    return 0
+
+
 # ─── create-source ─────────────────────────────────────────────────────────
 
 async def cmd_create_source(args: argparse.Namespace) -> int:
@@ -1144,6 +1342,13 @@ async def cmd_create_scope(args: argparse.Namespace) -> int:
     tenant_id = UUID(args.tenant_id)
     parent_id = UUID(args.parent) if args.parent else None
 
+    # Team memory (Phase A4): a private scope is owner-only. The CLI is admin-run
+    # with no member session, so the owner must be named explicitly.
+    visibility = "private" if getattr(args, "private", False) else "team"
+    owner_member_id = UUID(args.owner_member) if getattr(args, "owner_member", None) else None
+    if visibility == "private" and owner_member_id is None:
+        raise SystemExit("--private requires --owner-member <member_id>")
+
     pool = await PostgresPool.from_settings(settings.postgres)
     qdrant = await QdrantClient.from_settings(settings.qdrant)
     try:
@@ -1156,6 +1361,8 @@ async def cmd_create_scope(args: argparse.Namespace) -> int:
                 parent_scope_id=parent_id,
                 color=args.color,
                 icon=args.icon,
+                visibility=visibility,
+                owner_member_id=owner_member_id,
             )
 
         embedding_ref: UUID | None = None
@@ -2851,6 +3058,32 @@ def _build_parser() -> argparse.ArgumentParser:
                            ".env (used by the Docker-only install)")
     init.set_defaults(func=cmd_init_tenant)
 
+    # ─── team members (team memory, Phase A) ──────────────────────────────
+    addm = sub.add_parser("add-member",
+                          help="Add a collaborator to a team (re-wraps the shared "
+                               "DEK under their passphrase)")
+    addm.add_argument("--tenant-id", required=True)
+    addm.add_argument("--display-name", required=True)
+    addm.add_argument("--role", default="member",
+                      choices=["owner", "admin", "member", "viewer"])
+    addm.add_argument("--external-subject", default=None,
+                      help="JWT 'sub' / IdP id to map this member to (for jwt auth mode)")
+    addm.set_defaults(func=cmd_add_member)
+
+    lsm = sub.add_parser("list-members", help="List a team's members")
+    lsm.add_argument("--tenant-id", required=True)
+    lsm.add_argument("--include-removed", action="store_true",
+                     help="Also show members whose status is 'removed'")
+    lsm.set_defaults(func=cmd_list_members)
+
+    rmm = sub.add_parser("remove-member",
+                         help="Revoke a member's access (status='removed')")
+    rmm.add_argument("--tenant-id", required=True)
+    rmm.add_argument("--member", required=True, help="member_id (UUID) to remove")
+    rmm.add_argument("--no-rotate-reminder", action="store_true",
+                     help="Suppress the DEK-rotation reminder")
+    rmm.set_defaults(func=cmd_remove_member)
+
     idt = sub.add_parser("identity-template",
                          help="Print the identity-export prompt to stdout. "
                               "Paste it into your AI of choice; save the response; "
@@ -2881,6 +3114,11 @@ def _build_parser() -> argparse.ArgumentParser:
     scp.add_argument("--no-embed", action="store_true",
                      help="Skip embedding the scope; it won't be eligible for "
                           "auto-assignment (use for catch-all scopes like Inbox).")
+    scp.add_argument("--private", action="store_true",
+                     help="Team memory: make this a private scope (owner-only). "
+                          "Requires --owner-member.")
+    scp.add_argument("--owner-member", default=None,
+                     help="member_id (UUID) that owns a --private scope")
     scp.add_argument("--embed-model-name", default=None,
                      help="Override embedder model (default: runtime default; "
                           "see MODEL_CATALOG for valid names).")

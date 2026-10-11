@@ -82,15 +82,31 @@ async def resurface_build_identity(
 ) -> dict[str, Any]:
     tenant_id = ctx.tenant_id
 
-    # Resolve self-entity.
+    # Resolve self-entity. Team memory (Phase A2b): prefer the ACTING member's
+    # personal self-entity (tenant_members.self_entity_id); fall back to the
+    # team's self-entity (tenants.self_entity_id) for single-person installs or
+    # an unattributed session. identity_card() is already entity-parameterized,
+    # so passing the member's entity is all that's needed.
+    self_id_opt: UUID | None = None
     async with ctx.pipeline_ctx.pool.tenant_session(tenant_id) as conn:
-        row = await conn.fetchrow(
-            "SELECT self_entity_id FROM tenants WHERE tenant_id = $1",
-            tenant_id,
-        )
-    if row is None or row["self_entity_id"] is None:
+        if ctx.member_id is not None:
+            mrow = await conn.fetchrow(
+                "SELECT self_entity_id FROM tenant_members "
+                " WHERE tenant_id = $1 AND member_id = $2",
+                tenant_id, ctx.member_id,
+            )
+            if mrow is not None and mrow["self_entity_id"] is not None:
+                self_id_opt = mrow["self_entity_id"]
+        if self_id_opt is None:
+            row = await conn.fetchrow(
+                "SELECT self_entity_id FROM tenants WHERE tenant_id = $1",
+                tenant_id,
+            )
+            if row is not None and row["self_entity_id"] is not None:
+                self_id_opt = row["self_entity_id"]
+    if self_id_opt is None:
         return {"stored": 0, "error": "no self-entity found for this tenant"}
-    self_id: UUID = row["self_entity_id"]
+    self_id: UUID = self_id_opt
 
     facts: list[tuple[str, str, dict[str, Any]]] = []
 
